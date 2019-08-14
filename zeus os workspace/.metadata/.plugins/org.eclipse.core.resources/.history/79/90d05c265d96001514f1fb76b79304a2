@@ -1,0 +1,826 @@
+package edu.sru.thangiah.zeus.excelexport;
+
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Vector;
+
+import org.apache.poi.hssf.record.CFRuleRecord.ComparisonOperator;
+import org.apache.poi.hssf.record.cf.PatternFormatting;
+import org.apache.poi.hssf.util.CellRangeAddress;
+import org.apache.poi.hssf.util.CellRangeAddressList;
+import org.apache.poi.ss.usermodel.CellRange;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.ConditionalFormattingRule;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.SheetConditionalFormatting;
+import org.apache.poi.xssf.usermodel.XSSFCell;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import edu.sru.thangiah.zeus.core.ProblemInfo;
+import edu.sru.thangiah.zeus.vrptw.VRPTWDepot;
+import edu.sru.thangiah.zeus.vrptw.VRPTWDepotLinkedList;
+import edu.sru.thangiah.zeus.vrptw.VRPTWNodes;
+import edu.sru.thangiah.zeus.vrptw.VRPTWNodesLinkedList;
+import edu.sru.thangiah.zeus.vrptw.VRPTWProblemInfo;
+import edu.sru.thangiah.zeus.vrptw.VRPTWShipment;
+import edu.sru.thangiah.zeus.vrptw.VRPTWShipmentLinkedList;
+import edu.sru.thangiah.zeus.vrptw.VRPTWTruck;
+import edu.sru.thangiah.zeus.vrptw.VRPTWTruckLinkedList;
+
+public class ExcelExport {
+	private DataFields data;
+	
+	private String filename;
+	
+	private ProblemInfo problemInfo;
+	
+	private FileOutputStream thisxls;
+	private XSSFWorkbook wb;
+	private XSSFSheet sheet;
+	private XSSFRow curRow;
+	private XSSFCell curCell;
+	
+	private CellStyle infoStyle;
+	private CellStyle infoStyleLeft;
+	private CellStyle dataStyle;
+	private CellStyle dataStyleLeft;
+	
+	public ExcelExport(String filename, ProblemInfo problemInfo) throws IOException {
+		
+		this.filename = filename;
+		this.problemInfo = problemInfo;
+		
+		wb = new XSSFWorkbook();
+
+		infoStyle = wb.createCellStyle();
+		infoStyle.setAlignment(CellStyle.ALIGN_RIGHT);
+		infoStyle.setBorderBottom(CellStyle.BORDER_THIN);
+		infoStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
+		infoStyle.setBorderRight(CellStyle.BORDER_THIN);
+		infoStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+		infoStyle.setBorderTop(CellStyle.BORDER_MEDIUM);
+		infoStyle.setTopBorderColor(IndexedColors.BLACK.getIndex());
+
+		infoStyleLeft = wb.createCellStyle();
+		infoStyleLeft.setAlignment(CellStyle.ALIGN_LEFT);
+		infoStyleLeft.setBorderBottom(CellStyle.BORDER_THIN);
+		infoStyleLeft.setBottomBorderColor(IndexedColors.BLACK.getIndex());
+		infoStyleLeft.setBorderRight(CellStyle.BORDER_THIN);
+		infoStyleLeft.setRightBorderColor(IndexedColors.BLACK.getIndex());
+		infoStyleLeft.setBorderTop(CellStyle.BORDER_MEDIUM);
+		infoStyleLeft.setTopBorderColor(IndexedColors.BLACK.getIndex());
+		
+		dataStyle = wb.createCellStyle();
+		dataStyle.setAlignment(CellStyle.ALIGN_RIGHT);
+		dataStyle.setBorderRight(CellStyle.BORDER_THIN);
+		dataStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+		
+		dataStyleLeft = wb.createCellStyle();
+		dataStyleLeft.setAlignment(CellStyle.ALIGN_LEFT);
+		dataStyleLeft.setBorderRight(CellStyle.BORDER_THIN);
+		dataStyleLeft.setRightBorderColor(IndexedColors.BLACK.getIndex());
+	}
+	
+	public void writeLongSolution()
+	{
+
+		switch(this.problemInfo.probType)
+		{
+
+	    //type = 0 (VRP)
+	    //     = 1 (VRPTW)
+	    //     = 2 (MDVRP)
+		case 0:
+			// VRP
+			
+			break;
+		case 1:
+			VRPTWProblemInfo pi = (VRPTWProblemInfo) problemInfo;
+			
+			int numDepots = pi.getNumDepots();
+			VRPTWDepotLinkedList mainDepots = pi.getMainDepots();
+			VRPTWDepot mainDepot = (VRPTWDepot) mainDepots.getHead().getNext();
+			
+			int numTrucks = pi.getNumTrucks();
+			VRPTWTruckLinkedList mainTrucks = (VRPTWTruckLinkedList) mainDepots.getHead().getNext().getMainTrucks();
+			
+			int numShipments = pi.getNumShipments();
+			int maxCapacity = pi.getMaxCapacity();
+			int maxDuration = pi.getMaxDuration();
+			
+			// VRPTW
+			// This is what we should work on for now
+			boolean failFlag = false;
+			try
+			{
+				thisxls = new FileOutputStream(filename);
+				try
+				{
+					int rowCount = 0;
+
+					sheet = wb.createSheet();
+					
+					// Create Row 0
+					curRow = sheet.createRow(rowCount++);
+					
+					curCell = curRow.createCell(0);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("Depot Index");
+					
+					curCell = curRow.createCell(1);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("x");
+					
+					curCell = curRow.createCell(2);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("y");
+					
+					curCell = curRow.createCell(3);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("Total Demand");
+					
+					curCell = curRow.createCell(4);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("Total Distance");
+					
+					curCell = curRow.createCell(5);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("Total Travel Time");
+					
+					curCell = curRow.createCell(6);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("Number of Trucks");
+					
+
+					// Create Row for main depot
+					curRow = sheet.createRow(rowCount++);
+					
+					curCell = curRow.createCell(0);
+					curCell.setCellStyle(dataStyle);
+					curCell.setCellValue(1);
+					
+					curCell = curRow.createCell(1);
+					curCell.setCellStyle(dataStyle);
+					curCell.setCellValue(mainDepot.getXCoord());
+					
+					curCell = curRow.createCell(2);
+					curCell.setCellStyle(dataStyle);
+					curCell.setCellValue(mainDepot.getYCoord());
+					
+					curCell = curRow.createCell(3);
+					curCell.setCellStyle(dataStyle);
+					curCell.setCellValue(mainDepot.getAttributes().getTotalDemand());
+					
+					curCell = curRow.createCell(4);
+					curCell.setCellStyle(dataStyle);
+					curCell.setCellValue(mainDepot.getAttributes().getTotalDistance());
+					
+					curCell = curRow.createCell(5);
+					curCell.setCellStyle(dataStyle);
+					curCell.setCellValue(mainDepot.getAttributes().getTotalTravelTime());
+					
+					curCell = curRow.createCell(6);
+					curCell.setCellStyle(dataStyle);
+					curCell.setCellValue(mainTrucks.getSize());
+					
+					
+					
+					
+					VRPTWTruck truck = (VRPTWTruck) mainTrucks.getHead().getNext();
+					int truckNo = 1;
+					
+					while(truck != (VRPTWTruck) mainTrucks.getTail())
+					{
+						VRPTWNodesLinkedList mainNodes = (VRPTWNodesLinkedList) truck.getMainNodes();
+						
+						// Row 1
+						// Create Row for info about truck rows
+						curRow = sheet.createRow(rowCount++);
+						
+						// A
+						curCell = curRow.createCell(0);
+						curCell.setCellStyle(infoStyle);
+						curCell.setCellValue("Truck Index");
+
+						// B
+						curCell = curRow.createCell(1);
+						curCell.setCellStyle(infoStyle);
+						curCell.setCellValue("Total Demand");
+
+						// C
+						curCell = curRow.createCell(2);
+						curCell.setCellStyle(infoStyle);
+						curCell.setCellValue("Max Demand");
+
+						// D
+						curCell = curRow.createCell(3);
+						curCell.setCellStyle(infoStyle);
+						curCell.setCellValue("Total Travel Time");
+
+						// E
+						curCell = curRow.createCell(4);
+						curCell.setCellStyle(infoStyle);
+						curCell.setCellValue("Max Travel Time");
+
+						// F
+						curCell = curRow.createCell(5);
+						curCell.setCellStyle(infoStyle);
+						curCell.setCellValue("Number of Shipments");
+						
+
+						// Row 2
+						// Create Row for each truck
+						curRow = sheet.createRow(rowCount++);
+
+						// A
+						curCell = curRow.createCell(0);
+						curCell.setCellStyle(dataStyle);
+						curCell.setCellValue(truckNo);
+
+						// B
+						curCell = curRow.createCell(1);
+						curCell.setCellStyle(dataStyle);
+						curCell.setCellValue(truck.getAttributes().getTotalDemand());
+
+						// C
+						curCell = curRow.createCell(2);
+						curCell.setCellStyle(dataStyle);
+						curCell.setCellValue(maxCapacity);
+
+						// D
+						curCell = curRow.createCell(3);
+						curCell.setCellStyle(dataStyle);
+						curCell.setCellValue(truck.getAttributes().getTotalTravelTime());
+
+						// E
+						curCell = curRow.createCell(4);
+						curCell.setCellStyle(dataStyle);
+						curCell.setCellValue(maxDuration);
+
+						// F
+						curCell = curRow.createCell(5);
+						curCell.setCellStyle(dataStyle);
+						curCell.setCellValue(mainNodes.getSize());
+						
+
+						// Row 3
+						// Create Row for information about nodes
+						curRow = sheet.createRow(rowCount++);
+
+						// Column A
+						curCell = curRow.createCell(0);
+						curCell.setCellStyle(infoStyle);
+						curCell.setCellValue("Shipment Index");
+
+						// Column B
+						curCell = curRow.createCell(1);
+						curCell.setCellStyle(infoStyle);
+						curCell.setCellValue("x");
+
+						// Column C
+						curCell = curRow.createCell(2);
+						curCell.setCellStyle(infoStyle);
+						curCell.setCellValue("y");
+
+						// Column D
+						curCell = curRow.createCell(3);
+						curCell.setCellStyle(infoStyle);
+						curCell.setCellValue("Demand");
+
+						// Column E
+						curCell = curRow.createCell(4);
+						curCell.setCellStyle(infoStyle);
+						curCell.setCellValue("Service Time");
+
+						// Column F
+						curCell = curRow.createCell(5);
+						curCell.setCellStyle(infoStyle);
+						curCell.setCellValue("Early");
+
+						// Column G
+						curCell = curRow.createCell(6);
+						curCell.setCellStyle(infoStyle);
+						curCell.setCellValue("Late");
+
+						// Column H
+						curCell = curRow.createCell(7);
+						curCell.setCellStyle(infoStyle);
+						curCell.setCellValue("Begin");
+
+						String beginCellColumn = "G"; // 7th column
+						
+						int beginCellRowStart = rowCount;
+						int beginCellRowEnd = 0;
+						
+						boolean hasFoundLateCell = false;
+						boolean hasFoundBeginCell = false;
+
+						XSSFCell lateCell = null;
+						XSSFCell beginCell = null;
+						
+						VRPTWNodes currNode = (VRPTWNodes) mainNodes.getHead().getNext();
+						while(currNode != (VRPTWNodes) mainNodes.getTail())
+						{
+							// Row 4
+							// Create Row for each node
+							curRow = sheet.createRow(rowCount++);
+
+							// Column A
+							curCell = curRow.createCell(0);
+							curCell.setCellStyle(dataStyle);
+							curCell.setCellValue(currNode.getShipment().getIndex());
+
+							// Column B
+							curCell = curRow.createCell(1);
+							curCell.setCellStyle(dataStyle);
+							curCell.setCellValue(currNode.getShipment().getXCoord());
+
+							// Column C
+							curCell = curRow.createCell(2);
+							curCell.setCellStyle(dataStyle);
+							curCell.setCellValue(currNode.getShipment().getYCoord());
+
+							// Column D
+							curCell = curRow.createCell(3);
+							curCell.setCellStyle(dataStyle);
+							curCell.setCellValue(currNode.getShipment().getDemand());
+
+							// Column E
+							curCell = curRow.createCell(4);
+							curCell.setCellStyle(dataStyle);
+							curCell.setCellValue(currNode.getServiceTime());
+
+							// Column F
+							curCell = curRow.createCell(5);
+							curCell.setCellStyle(dataStyle);
+							curCell.setCellValue(currNode.getEarly());
+
+							// Column G
+							curCell = curRow.createCell(6);
+							curCell.setCellStyle(dataStyle);
+							curCell.setCellValue(currNode.getLate());
+							
+							lateCell = curCell;
+
+							// Column H
+							curCell = curRow.createCell(7);
+							curCell.setCellStyle(dataStyle);
+							curCell.setCellValue(currNode.getBeginTime());
+							
+							beginCellRowEnd = rowCount;
+							beginCell = curCell;
+
+							// Column I
+							curCell = curRow.createCell(8);
+							curCell.setCellStyle(dataStyle);
+							curCell.setCellValue(lateCell.getNumericCellValue() - beginCell.getNumericCellValue());
+
+					        SheetConditionalFormatting sheetCF = sheet.getSheetConditionalFormatting();
+					        
+							ConditionalFormattingRule rule1 = sheetCF.createConditionalFormattingRule(ComparisonOperator.GT, "0");
+					        org.apache.poi.ss.usermodel.PatternFormatting fill1 = rule1.createPatternFormatting();
+					        fill1.setFillBackgroundColor(IndexedColors.GREEN.index);
+					        fill1.setFillPattern(PatternFormatting.SOLID_FOREGROUND);
+					        
+							ConditionalFormattingRule rule2 = sheetCF.createConditionalFormattingRule(ComparisonOperator.LT, "0");
+					        org.apache.poi.ss.usermodel.PatternFormatting fill2 = rule2.createPatternFormatting();
+					        fill2.setFillBackgroundColor(IndexedColors.GREEN.index);
+					        fill2.setFillPattern(PatternFormatting.SOLID_FOREGROUND);
+					        
+					        @SuppressWarnings("deprecation")
+							CellRangeAddress[] region = new CellRangeAddress[]{new CellRangeAddress(rowCount - 1, rowCount - 1, 8, 8)};
+					        
+					        sheetCF.addConditionalFormatting(region, rule1, rule2);
+							
+							currNode = (VRPTWNodes) currNode.getNext();
+						}
+						
+						
+						
+						
+						truck= (VRPTWTruck) truck.getNext();
+						truckNo++;
+					}
+					
+					for(int i = 0; i < 10; i++)
+					{
+						sheet.autoSizeColumn(i);
+					}
+					
+					wb.write(thisxls);
+					thisxls.close();
+				}
+				catch(IOException ioe)
+				{
+					failFlag = true;
+					System.out.println("Error: Could not process file as excel doc");
+				}
+			}
+			catch(FileNotFoundException e)
+			{
+				failFlag = true;
+				System.out.println("Error: File not found");
+			}
+			
+			if(failFlag)
+			{
+				return;
+			}
+			
+			break;
+		case 2:
+			// MDVRP
+			
+			break;
+		default:
+			// Not supported problem type
+			
+			break;
+		}
+	}
+	
+	public void writeShortSolution()
+	{
+
+		switch(problemInfo.probType)
+		{
+
+	    //type = 0 (VRP)
+	    //     = 1 (VRPTW)
+	    //     = 2 (MDVRP)
+		case 0:
+			// VRP
+			
+			break;
+		case 1:
+			VRPTWProblemInfo pi = (VRPTWProblemInfo) problemInfo;
+			
+			int numDepots = pi.getNumDepots();
+			VRPTWDepotLinkedList mainDepots = pi.getMainDepots();
+			VRPTWDepot mainDepot = (VRPTWDepot) mainDepots.getHead().getNext();
+			
+			int numTrucks = pi.getNumTrucks();
+			VRPTWTruckLinkedList mainTrucks = (VRPTWTruckLinkedList) mainDepots.getHead().getNext().getMainTrucks();
+			
+			int numShipments = pi.getNumShipments();
+			int maxCapacity = pi.getMaxCapacity();
+			int maxDuration = pi.getMaxDuration();
+			
+			
+			
+			// VRPTW
+			// This is what we should work on for now
+			boolean failFlag = false;
+			try
+			{
+				thisxls = new FileOutputStream(filename);
+				try
+				{
+					int rowCount = 0;
+
+					sheet = wb.createSheet();
+					
+					// Create Row 0
+					curRow = sheet.createRow(rowCount++);
+					
+					curCell = curRow.createCell(0);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("Num Depots");
+					
+					curCell = curRow.createCell(1);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("Num Shipments");
+					
+					curCell = curRow.createCell(2);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("Num Trucks");
+					
+					curCell = curRow.createCell(3);
+					curCell.setCellStyle(infoStyleLeft);
+					curCell.setCellValue("Processing Time");
+					
+
+					// Create Row 1
+					curRow = sheet.createRow(rowCount++);
+					
+					curCell = curRow.createCell(0);
+					curCell.setCellStyle(dataStyle);
+					curCell.setCellValue(numDepots);
+					
+					curCell = curRow.createCell(1);
+					curCell.setCellStyle(dataStyle);
+					curCell.setCellValue(numShipments);
+					
+					curCell = curRow.createCell(2);
+					curCell.setCellStyle(dataStyle);
+					curCell.setCellValue(numTrucks);
+					
+					curCell = curRow.createCell(3);
+					curCell.setCellStyle(dataStyleLeft);
+					curCell.setCellValue(pi.getTotalTime());
+					
+					// Create Row 2
+					curRow = sheet.createRow(rowCount++);
+					
+					curCell = curRow.createCell(0);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("Total Demand");
+					
+					curCell = curRow.createCell(1);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("Total Distance");
+					
+					curCell = curRow.createCell(2);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("Total Travel Time");
+					
+					curCell = curRow.createCell(3);
+					curCell.setCellStyle(infoStyleLeft);
+					curCell.setCellValue("Total Cost");
+					
+
+					// Create Row 3
+					curRow = sheet.createRow(rowCount++);
+					
+					curCell = curRow.createCell(0);
+					curCell.setCellStyle(dataStyle);
+					curCell.setCellValue(mainDepots.getAttributes().getTotalDemand());
+					
+					curCell = curRow.createCell(1);
+					curCell.setCellStyle(dataStyle);
+					curCell.setCellValue(mainDepots.getAttributes().getTotalDistance());
+					
+					curCell = curRow.createCell(2);
+					curCell.setCellStyle(dataStyle);
+					curCell.setCellValue(mainDepots.getAttributes().getTotalTravelTime());
+					
+					curCell = curRow.createCell(3);
+					curCell.setCellStyle(dataStyleLeft);
+					curCell.setCellValue(mainDepots.getAttributes().getTotalCost());
+					
+
+					
+					// Create Row for info about truck rows
+					curRow = sheet.createRow(rowCount++);
+					
+					curCell = curRow.createCell(0);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("Truck Index");
+					
+					curCell = curRow.createCell(1);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("Total Demand");
+					
+					curCell = curRow.createCell(2);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("Max Capacity");
+					
+					curCell = curRow.createCell(3);
+					curCell.setCellStyle(infoStyleLeft);
+					curCell.setCellValue("Route");
+					
+					VRPTWTruck truck = (VRPTWTruck) mainTrucks.getHead().getNext();
+					int truckNo = 1;
+					
+					while(truck != (VRPTWTruck) mainTrucks.getTail())
+					{
+						String route = "(0)";
+						
+						VRPTWNodesLinkedList mainNodes = (VRPTWNodesLinkedList) truck.getMainNodes();
+						
+						VRPTWNodes currNode = (VRPTWNodes) mainNodes.getHead().getNext();
+						while(currNode != (VRPTWNodes) mainNodes.getTail())
+						{
+							route += " - (" + currNode.getShipment().getIndex() + ")";
+							
+							currNode = (VRPTWNodes) currNode.getNext();
+						}
+						
+						route += " - (0)";
+						
+						// Create Row for each truck
+						curRow = sheet.createRow(rowCount++);
+						
+						curCell = curRow.createCell(0);
+						curCell.setCellStyle(dataStyle);
+						curCell.setCellValue(truckNo);
+						
+						curCell = curRow.createCell(1);
+						curCell.setCellStyle(dataStyle);
+						curCell.setCellValue(truck.getAttributes().getTotalDemand());
+						
+						curCell = curRow.createCell(2);
+						curCell.setCellStyle(dataStyle);
+						curCell.setCellValue(maxCapacity);
+						
+						curCell = curRow.createCell(3);
+						curCell.setCellStyle(dataStyleLeft);
+						curCell.setCellValue(route);
+						
+						truck = (VRPTWTruck) truck.getNext();
+						truckNo++;
+					}
+					
+					for(int i = 0; i < 10; i++)
+					{
+						sheet.autoSizeColumn(i);
+					}
+					
+					wb.write(thisxls);
+					thisxls.close();
+				}
+				catch(IOException ioe)
+				{
+					failFlag = true;
+					System.out.println("Error: Could not process file as excel doc");
+				}
+			}
+			catch(FileNotFoundException e)
+			{
+				failFlag = true;
+				System.out.println("Error: File not found");
+			}
+			
+			if(failFlag)
+			{
+				return;
+			}
+			
+			break;
+		case 2:
+			// MDVRP
+			
+			break;
+		default:
+			// Not supported problem type
+			
+			break;
+		}
+	}
+	
+	public void writeDataFile()
+	{
+
+		switch(problemInfo.probType)
+		{
+
+	    //type = 0 (VRP)
+	    //     = 1 (VRPTW)
+	    //     = 2 (MDVRP)
+		case 0:
+			// VRP
+			
+			break;
+		case 1:
+			VRPTWProblemInfo pi = (VRPTWProblemInfo) problemInfo;
+			
+			int numDepots = pi.getNumDepots();
+			VRPTWDepotLinkedList mainDepots = pi.getMainDepots();
+			VRPTWDepot mainDepot = (VRPTWDepot) mainDepots.getHead().getNext();
+			
+			int numTrucks = pi.getNumTrucks();
+			VRPTWTruckLinkedList mainTrucks = (VRPTWTruckLinkedList) mainDepots.getHead().getNext().getMainTrucks();
+			
+			int numShipments = pi.getNumShipments();
+			int maxCapacity = pi.getMaxCapacity();
+			int maxDuration = pi.getMaxDuration();
+			
+			
+			
+			// VRPTW
+			// This is what we should work on for now
+			boolean failFlag = false;
+			try
+			{
+				thisxls = new FileOutputStream(filename);
+				try
+				{
+					int rowCount = 0;
+
+					sheet = wb.createSheet();
+					
+					// Create Row 0
+					curRow = sheet.createRow(rowCount++);
+					
+					curCell = curRow.createCell(0);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("Number of Shipments");
+					
+					// Create Row 1
+					curRow = sheet.createRow(rowCount++);
+					
+					curCell = curRow.createCell(0);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue(numShipments);
+					
+					// Create Row 2
+					curRow = sheet.createRow(rowCount++);
+					
+					curCell = curRow.createCell(0);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("Shipment Index");
+					
+					curCell = curRow.createCell(1);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("x");
+					
+					curCell = curRow.createCell(2);
+					curCell.setCellStyle(infoStyleLeft);
+					curCell.setCellValue("y");
+					
+					curCell = curRow.createCell(3);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("Demand");
+					
+					curCell = curRow.createCell(4);
+					curCell.setCellStyle(infoStyle);
+					curCell.setCellValue("Service Time");
+					
+					curCell = curRow.createCell(5);
+					curCell.setCellStyle(infoStyleLeft);
+					curCell.setCellValue("Early");
+					
+					curCell = curRow.createCell(6);
+					curCell.setCellStyle(infoStyleLeft);
+					curCell.setCellValue("Late");
+
+					VRPTWShipmentLinkedList mainShipments = (VRPTWShipmentLinkedList) pi.getMainShipments();
+					VRPTWShipment currShip = (VRPTWShipment) mainShipments.getHead().getNext();
+					while(currShip != (VRPTWShipment) mainShipments.getTail())
+					{
+						// Create Row 2
+						curRow = sheet.createRow(rowCount++);
+						
+						curCell = curRow.createCell(0);
+						curCell.setCellStyle(infoStyle);
+						curCell.setCellValue(currShip.getIndex());
+						
+						curCell = curRow.createCell(1);
+						curCell.setCellStyle(infoStyle);
+						curCell.setCellValue(currShip.getXCoord());
+						
+						curCell = curRow.createCell(2);
+						curCell.setCellStyle(infoStyleLeft);
+						curCell.setCellValue(currShip.getYCoord());
+						
+						curCell = curRow.createCell(3);
+						curCell.setCellStyle(infoStyle);
+						curCell.setCellValue(currShip.getDemand());
+						
+						curCell = curRow.createCell(4);
+						curCell.setCellStyle(infoStyle);
+						curCell.setCellValue(currShip.getDuration());
+						
+						curCell = curRow.createCell(5);
+						curCell.setCellStyle(infoStyleLeft);
+						curCell.setCellValue(currShip.getEarly());
+						
+						curCell = curRow.createCell(6);
+						curCell.setCellStyle(infoStyleLeft);
+						curCell.setCellValue(currShip.getLate());
+						
+						currShip = (VRPTWShipment) currShip.getNext();
+					}
+					
+					for(int i = 0; i < 10; i++)
+					{
+						sheet.autoSizeColumn(i);
+					}
+					
+					wb.write(thisxls);
+					thisxls.close();
+				}
+				catch(IOException ioe)
+				{
+					failFlag = true;
+					System.out.println("Error: Could not process file as excel doc");
+				}
+			}
+			catch(FileNotFoundException e)
+			{
+				failFlag = true;
+				System.out.println("Error: File not found");
+			}
+			
+			if(failFlag)
+			{
+				return;
+			}
+			
+			break;
+		case 2:
+			// MDVRP
+			
+			break;
+		default:
+			// Not supported problem type
+			
+			break;
+		}
+	}
+}

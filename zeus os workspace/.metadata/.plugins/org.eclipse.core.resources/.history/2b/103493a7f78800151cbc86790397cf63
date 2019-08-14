@@ -1,0 +1,609 @@
+package edu.sru.thangiah.zeus.vrptw;
+
+import edu.sru.thangiah.zeus.core.*;
+import edu.sru.thangiah.zeus.vrptw.VRPTWNodes;
+//import the parent class
+import edu.sru.thangiah.zeus.core.NodesLinkedList;
+
+/**
+ *
+ * <p>Title:</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2005</p>
+ * <p>Company: </p>
+ * @author Sam R. Thangiah
+ * @version 2.0
+ */
+
+public class VRPTWNodesLinkedList
+    extends NodesLinkedList implements java.io.Serializable,
+    java.lang.Cloneable {
+	
+  public VRPTWNodesLinkedList() {
+	  setHead(new VRPTWNodes(new VRPTWShipment()));
+      setTail(new VRPTWNodes(new VRPTWShipment()));
+      linkHeadTail();
+      setAttributes(new VRPTWAttributes());
+  }
+
+  /**
+   * Constructor
+   * @param tT truck type
+   * @param depotX depot x-coordinate
+   * @param depotY depot y-coordinate
+   */
+  public VRPTWNodesLinkedList(VRPTWTruckType tT, double depotX, double depotY, int tN) {
+
+	  //super(tT, depotX, depotY, tN);
+	  setTruckType(tT);
+	  setTruckNum(tN);
+	  //Set the feasibility check to be done for the route
+	  setFeasibility(new VRPTWFeasibility(getTruckType().getMaxDuration(),
+			  getTruckType().getMaxCapacity(), this));
+	  setHead(new VRPTWNodes(new VRPTWShipment(0, 0, 0, 0, 0, 0, 0)));
+	  setTail(new VRPTWNodes(new VRPTWShipment(-1, 0, 0, 0, 0, 0, 0)));
+	  linkHeadTail();
+	  //assign the VRPTW attributes
+	  setAttributes(new VRPTWAttributes());
+  }
+
+  /**
+   * Returns the first cell in the linked list
+   * @return first cell
+   */
+  public VRPTWNodes getVRPHead() {
+    return (VRPTWNodes) getHead();
+  }
+  
+  public VRPTWAttributes getAttributes()
+  {
+	  return (VRPTWAttributes) super.getAttributes();
+  }
+
+  /**
+   * This is a stub - Leave it as it is
+   * The concrere getInsertShipment will be declared by the class inheriting this
+   * class and implementing the actual insertion of shipment  *
+   * @param currNodesLL current nodes linked list
+   * @param theShipment shipment to be inserted
+   * @return true if inserted, false if not
+   */
+
+  public boolean getInsertShipment(VRPTWNodesLinkedList currNodeLL,
+                                   VRPTWShipment theShipment) {
+    return false;
+  }
+
+  /**
+   * Inserts a shipment into the route, creating a new Nodes for the
+   * Shipment. Will attempt to put the newly created point cell into every
+   * possible location in the route in an attempt to find the best possible
+   * initial solution.
+   * @param theShipment the shipment to insert
+   * @return true if inserted, false if not
+   */
+  public boolean insertShipment(Shipment theShipment) {
+    //method for inserting the shipment into a truck
+    VRPTWNodesLinkedList status = (SolomonSequentialInsert) ProblemInfo.insertShipType;
+    return status.getInsertShipment(this, (VRPTWShipment) theShipment);
+  }
+
+  /**
+   * Same as insertShipment except the insertion parameter must be specified
+   * as a point cell and also the previous point cell is returned. This method
+   * is used by the local optimization methods
+   * @param insertNode Nodes that is to be inserted into the route
+   * @return Nodes that is previous to the inserted Nodes.
+   */
+  /** @todo  This method should be inside the class that inherits the NodesLinkedList */
+  public Nodes insertNodes(Nodes insertNode) {
+    boolean isDiagnostic = false;
+    Nodes pcBeforeInsertNode = null;
+    Shipment theShipment = insertNode.getShipment();
+
+    if (isDiagnostic) {
+      System.out.println("========================================");
+      System.out.println("In InsertNodes in Nodeslinked list");
+      System.out.println("Nodes to be inserted " + theShipment.getIndex());
+      System.out.println("Route to be inserted " + this.getRouteString());
+      System.out.println("Cost before insertion " + this.getCost());
+    }
+
+    // the route is empty
+    if (getHead().getNext() == getTail()) {
+      getHead().setNext(insertNode);
+      getTail().setPrev(insertNode);
+      insertNode.setPrev(getHead());
+      insertNode.setNext(getTail());
+
+      pcBeforeInsertNode = getHead(); //return head depot
+
+      if (isDiagnostic) {
+        System.out.println("Route is empty");
+        System.out.println("After inserting the node " + this.getRouteString());
+      }
+
+      if (getFeasibility().isFeasible()) {
+        this.removeNodes(insertNode); //route is infeasible, remove this cell
+        if (isDiagnostic) {
+          System.out.println("Insertion infeasible - Returning null");
+          System.out.println("Returning to original route " +
+                             this.getRouteString());
+          System.out.println("================== Exiting insertNodes ");
+        }
+        return null;
+      }
+    }
+    // the route is not empty
+    else {
+      double cost = Double.MAX_VALUE;
+      Nodes costCell = null; //cell after which the new cell was inserted to achieve cost
+      Nodes prevCell = getHead();
+      Nodes nextCell = getHead().getNext();
+
+      if (isDiagnostic) {
+        System.out.println("Route is not empty");
+      }
+
+      //loop through all the cells looking for the cheapest place to put the
+      //new cell.
+      while (nextCell != null) {
+        //insert the cell after current prevCell
+        prevCell.setNext(insertNode);
+        insertNode.setPrev(prevCell);
+        insertNode.setNext(nextCell);
+        nextCell.setPrev(insertNode);
+
+        //calculate the cost
+        //double tempCost = ProblemInfo.nodesLLLevelCostF.getTotalConstraintCost(this);
+        //double tempCost = 0; // ------------- FIX THIS ---------------
+        double tempCost = ProblemInfo.nodesLLLevelCostF.getTotalCost(this);
+        if (isDiagnostic) {
+          System.out.println("After inserting node " + this.getRouteString());
+          System.out.println("Cost after insertion " + tempCost);
+        }
+
+        //check to see if the new route exceeds the maximum distance allowed
+        if (getFeasibility().isFeasible()) {
+          //decide if this cell should be saved
+          if (tempCost < cost) {
+            cost = tempCost;
+            costCell = prevCell;
+          }
+          if (isDiagnostic) {
+            System.out.println("Insertion is feasible ");
+            System.out.println("Cost before and after insertion " + cost + " " +
+                               tempCost);
+          }
+        }
+
+        //remove the new cell
+        prevCell.setNext(nextCell);
+        nextCell.setPrev(prevCell);
+        insertNode.setNext(null);
+        insertNode.setPrev(null);
+        if (isDiagnostic) {
+          System.out.println("After removing the node from the route " +
+                             this.getRouteString());
+        }
+
+        //set prevCell and nextCell to the next cells in linked list
+        prevCell = nextCell;
+        nextCell = prevCell.getNext();
+      }
+
+      if (costCell != null) {
+        //put the cell in the cheapest place you found
+        prevCell = costCell;
+        nextCell = prevCell.getNext();
+        prevCell.setNext(insertNode);
+        insertNode.setPrev(prevCell);
+        insertNode.setNext(nextCell);
+        nextCell.setPrev(insertNode);
+
+        pcBeforeInsertNode = prevCell;
+        if (isDiagnostic) {
+          System.out.println("Cost is not null");
+          System.out.println(
+              "After inserting the cell in the cheapest place found" +
+              this.getRouteString());
+        }
+      }
+      else {
+        if (isDiagnostic) {
+          System.out.println("Cost is null");
+        }
+        return null;
+      }
+    }
+    theShipment.setIsAssigned(true);
+    //ProblemInfo.nodesLLLevelCostF.calculateTotalsStats(this);
+    return pcBeforeInsertNode;
+  }
+
+  /**
+   * This was in the LinearGreedyInsertShipment class and was move to the VRPNodesLinkedList class
+   * @return Object
+   */
+  public Object clone() {
+
+    VRPTWNodesLinkedList clonedNodesLinkedList = new VRPTWNodesLinkedList();
+
+    clonedNodesLinkedList.setAttributes((Attributes)this.getAttributes().clone());
+    //clonedNodesLinkedList.setCollapsed(this.collapsed);
+    clonedNodesLinkedList.setFeasibility( (VRPTWFeasibility)this.getFeasibility().
+                                         clone());
+    clonedNodesLinkedList.setTruckType( (VRPTWTruckType)this.getTruckType().clone());
+    clonedNodesLinkedList.setTruckNum(this.getTruckNum());
+    clonedNodesLinkedList.setHead( (VRPTWNodes)this.getHead().clone());
+
+    this.expandRoute();
+
+    if (this.getHead() != this.getTail()) {
+      VRPTWNodes currentNodes = (VRPTWNodes) clonedNodesLinkedList.getHead();
+      VRPTWNodes nextNodes = (VRPTWNodes)this.getHead().getNext();
+
+      while (nextNodes != null) {
+        currentNodes.setNext( (VRPTWNodes) nextNodes.clone()); //create the next depot
+        currentNodes.getNext().setPrev(currentNodes); //set the next depot's prev
+        currentNodes = (VRPTWNodes) currentNodes.getNext();
+        nextNodes = (VRPTWNodes) nextNodes.getNext();
+
+        //once next is null, we have found the tail of the list
+        if (nextNodes == null) {
+          clonedNodesLinkedList.setTail(currentNodes);
+          currentNodes.setNext(null);
+        }
+      }
+    }
+
+    //Set the route for the feasibility
+    clonedNodesLinkedList.getFeasibility().setRoute(clonedNodesLinkedList);
+
+    return clonedNodesLinkedList;
+  }
+}
+
+class SolomonSequentialInsert
+	extends VRPTWNodesLinkedList
+{
+	public boolean getInsertShipment(VRPTWNodesLinkedList currNodeLL,
+									 VRPTWShipment theShipment)
+	{
+		VRPTWNodes tmpPtr;
+		VRPTWNodes prvPtr;
+		
+		VRPTWNodes theNode = new VRPTWNodes(theShipment);
+		VRPTWNodes bestNodeToInsertAfter = null;
+		double leastPushForward = -1;
+		
+		if(currNodeLL.getHead().getNext() == currNodeLL.getTail())
+		{
+			// Node LL is empty so we can insert it
+			currNodeLL.insertLastNode(theNode);
+		}
+		else
+		{
+			prvPtr = (VRPTWNodes) currNodeLL.getHead();
+			
+			while(prvPtr != (VRPTWNodes) currNodeLL.getTail())
+			{
+				tmpPtr = (VRPTWNodes) prvPtr.getNext();
+				
+				double bCur = tmpPtr.getBeginTime();
+				
+				super.insertAfterNodes(theNode, prvPtr);
+				ProblemInfo.nodesLLLevelCostF.calculateTotalsStats(currNodeLL);
+				
+				double bNew = tmpPtr.getBeginTime();
+				
+				double pushForward = bNew - bCur;
+				
+				if(theNode.getBeginTime() >= theNode.getShipment().getLate())
+				{
+					// Node being inserted would make route infeasible
+					// Remove node
+					super.removeNodes(theNode);
+					return false;
+				}
+				else
+				{
+					// Check if any of the nodes after thenode in route
+					// would be made late by insertion
+					VRPTWNodes nxtPtr = tmpPtr;
+					while(nxtPtr != (VRPTWNodes) currNodeLL.getTail())
+					{
+						if(nxtPtr.getBeginTime() >= nxtPtr.getShipment().getLate())
+						{
+							// Node being inserted would make route infeasible
+							// Remove node
+							super.removeNodes(theNode);
+							return false;
+						}
+					}
+					
+					if(leastPushForward >= 0)
+					{
+						// See if local best is beaten
+						if(pushForward < leastPushForward)
+						{
+							// Keep track
+							leastPushForward = pushForward;
+							bestNodeToInsertAfter = prvPtr;
+						}
+					}
+					else
+					{
+						// This is the first legal insert
+						// Set local best
+						leastPushForward = pushForward;
+						bestNodeToInsertAfter = prvPtr;
+					}
+				}
+				
+				super.removeNodes(theNode);
+				ProblemInfo.nodesLLLevelCostF.calculateTotalsStats(currNodeLL);
+
+				prvPtr = (VRPTWNodes) prvPtr.getNext();
+			}
+			
+			if(leastPushForward < 0)
+			{
+				return false;
+			}
+			
+		}
+
+		// We have the local best node to insert theNode after
+		super.insertAfterNodes(theNode, bestNodeToInsertAfter);
+		ProblemInfo.nodesLLLevelCostF.calculateTotalsStats(currNodeLL);
+		
+	    theShipment.setIsAssigned(true);
+	    
+	  	  System.out.println("Route is:");
+	  	  System.out.print("0(0)-");
+	  	  VRPTWNodes tempPtr= (VRPTWNodes)currNodeLL.getHead().getNext();
+	  	  while (tempPtr != (VRPTWNodes)currNodeLL.getTail())
+	  	  {
+	  		  System.out.print(tempPtr.getIndex()+"("+tempPtr.getDemand()+")-");
+	  		  tempPtr = tempPtr.getVRPTWNext();
+	  	  } 	  
+	  	  System.out.print("0(0)");
+	  	  System.out.println();
+		
+		return true;
+	}
+
+	//The WhoAmI methods gives the id of the assigned object
+	//It is a static method so that it can be accessed without creating an object
+	public static String WhoAmI() {
+		return ("Insertion Type: Solomon's Sequential insertion heuristic");
+	}
+
+}
+
+class LinearGreedyInsertShipment
+    extends VRPTWNodesLinkedList {
+  public boolean getInsertShipment(VRPTWNodesLinkedList currNodeLL,
+                                   VRPTWShipment theShipment) {
+	  
+	VRPTWNodes tmpPtr;
+    //currNodeLL is the reference to the current node linked list being considered for insertion
+    //theShipment is the shipment to be inserted
+    VRPTWNodes theNode = new VRPTWNodes(theShipment);
+
+    if(currNodeLL.getHead().getNext() == currNodeLL.getTail())
+    {
+    	// Node LL is empty
+    	// Insert between head and tail
+        currNodeLL.insertLastNode(theNode);
+    	
+    }
+    else
+    {
+    	// Node LL not empty
+    	// Find the best place to insert it
+    	// Best insert minimizes distance increase in route
+    	// while minimizing local schedule time increase
+    	// for inserting j between i and k
+    	// where j is theShipment
+    	// i is the shipment that would be before j
+    	// and k is the shipment that would be after k
+    	
+    	// Init cost of route
+    	// Go through each prevNode in NodeLL starting with head
+    	// Set nextNode to prevNode.getNext()
+    	// Clone NodeLL
+    	// Insert theShipment between prev/nextNodes
+    	// Get new cost of route
+    	// Keep track of lowest cost insert
+    	// Use lowest cost insert as final insert
+    	
+    	VRPTWNodes prevNode = (VRPTWNodes) currNodeLL.getHead();
+    	VRPTWNodes nextNode = null;
+
+    	Double costPreInsert = ProblemInfo.nodesLLLevelCostF.getTotalCost(currNodeLL);
+    	
+    	VRPTWNodes bestPrevNode = prevNode;
+    	Double bestCostDifference = null;
+    	
+    	while(prevNode != (VRPTWNodes) currNodeLL.getTail())
+    	{
+    		nextNode = (VRPTWNodes) prevNode.getNext(); 
+    		
+        	prevNode.setNext(theNode);
+        	nextNode.setPrev(theNode);
+        	theNode.setPrev(prevNode);
+        	theNode.setNext(nextNode);
+        	
+        	ProblemInfo.nodesLLLevelCostF.setTotalCost(currNodeLL);
+    		Double costPostInsert = ProblemInfo.nodesLLLevelCostF.getTotalCost(currNodeLL);
+    		System.out.println("Cost pre-insert: " + costPreInsert + ", Cost post-insert: " + costPostInsert);
+    		Double costDifference = costPostInsert - costPreInsert;
+    		if(bestCostDifference == null)
+    		{
+    			// First cost difference, just set it
+    			bestCostDifference = costDifference;
+    			bestPrevNode = prevNode;
+    		}
+    		else if(costDifference < bestCostDifference)
+    		{
+    			bestCostDifference = costDifference;
+    			bestPrevNode = prevNode;
+    		}
+    		// Remove the node to test the next insert position
+    		prevNode.setNext(nextNode);
+    		nextNode.setPrev(prevNode);
+    		theNode.setPrev(null);
+    		theNode.setNext(null);
+    		
+    		prevNode = (VRPTWNodes) prevNode.getNext();
+    	}
+    	
+    	// Should have the best node to use as i
+    	if(bestCostDifference != null)
+    	{
+    		VRPTWNodes bestNextNode = (VRPTWNodes) bestPrevNode.getNext();
+    		bestPrevNode.setNext(theNode);
+    		bestNextNode.setPrev(theNode);
+    		theNode.setPrev(bestPrevNode);
+    		theNode.setNext(bestNextNode);
+    	}
+    	else
+    	{
+    		return false;
+    	}
+    }
+
+    theShipment.setIsAssigned(true);
+    ProblemInfo.nodesLLLevelCostF.calculateTotalsStats(currNodeLL);
+    
+  	  System.out.println("Route is:");
+  	  System.out.print("0(0)-");
+  	  VRPTWNodes tempPtr= (VRPTWNodes)currNodeLL.getHead().getNext();
+  	  while (tempPtr != (VRPTWNodes)currNodeLL.getTail())
+  	  {
+  		  System.out.print(tempPtr.getIndex()+"("+tempPtr.getDemand()+")-");
+  		  tempPtr = tempPtr.getVRPTWNext();
+  	  } 	  
+  	  System.out.print("0(0)");
+  	  System.out.println();
+    
+    return true;
+    
+
+    // Old insert code
+    
+    /*
+    // the route is empty
+    if (currNodeLL.getHead().getNext() == currNodeLL.getTail()) {
+    	System.out.println("ROUTE IS EMPTY");
+      currNodeLL.setHeadNext(theCell);
+      currNodeLL.getTail().setPrev(theCell);
+      theCell.setPrev(currNodeLL.getHead());
+      theCell.setNext(currNodeLL.getTail());
+      
+      //print out current route
+      {
+    	  System.out.println("Printing VRPNodesLinkedList");
+    	  VRPNodes tempPtr= (VRPNodes)currNodeLL.getHead();
+    	  while (tempPtr != (VRPNodes)currNodeLL.getTail())
+    	  {
+    		  System.out.println("Node number and Demand is:"+tempPtr.getIndex()+" "+tempPtr.getDemand());
+    		  tempPtr = tempPtr.getVRPNext();
+    	  }
+    	  System.out.println("Done Printing");    	  
+      }
+
+      
+      //if its not feasible, return route to what it was and return false
+      if (!currNodeLL.getFeasibility().isFeasible()) {
+    	//remove the inserted node
+    	tmpPtr = (VRPTWNodes) currNodeLL.getHead().getNext();
+    	tmpPtr.setNext(null);
+    	tmpPtr.setPrev(null);
+    	
+    	//point the head and tail to each other
+        currNodeLL.setHeadNext(currNodeLL.getTail());
+        currNodeLL.getTail().setPrev(currNodeLL.getHead());
+
+        return false;
+      }
+      
+    }
+    // the route is not empty
+    else {
+    	System.out.println("ROUTE IS NOT EMPTY");
+      double cost = Double.MAX_VALUE;
+      
+      VRPTWNodes costCell = null; //cell after which the new cell was inserted to achieve cost
+
+      VRPTWNodes prevCell = (VRPTWNodes) currNodeLL.getHead();
+      VRPTWNodes nextCell = (VRPTWNodes) currNodeLL.getHead().getNext();
+
+      while (nextCell != currNodeLL.getTail()) {
+        //insert the cell after current prevCell
+        prevCell.setNext(theCell);
+        theCell.setPrev(prevCell);
+        theCell.setNext(nextCell);
+        nextCell.setPrev(theCell);
+
+        
+        //check to see if the new route is feasible
+        if (currNodeLL.getFeasibility().isFeasible()) {
+          //calculate the cost
+          double tempCost = ProblemInfo.nodesLLLevelCostF.getTotalCost(
+              currNodeLL);
+
+          //decide if this cell should be saved
+          if (tempCost < cost) {
+            cost = tempCost;
+            costCell = prevCell;
+          }
+        }
+        
+        //remove the new cell
+        prevCell.setNext(nextCell);
+        nextCell.setPrev(prevCell);
+        theCell.setNext(null);
+        theCell.setPrev(null);
+
+        //set prevCell and nextCell to the next cells in linked list
+        prevCell = nextCell;
+        nextCell = (VRPTWNodes) prevCell.getNext();
+        //print out current route
+        {
+      	  System.out.println("Printing VRPNodesLinkedList");
+      	  VRPNodes tempPtr= (VRPNodes)currNodeLL.getHead();
+      	  while (tempPtr != (VRPNodes)currNodeLL.getTail())
+      	  {
+      		  System.out.println("Node number and Demand is:"+tempPtr.getIndex()+" "+tempPtr.getDemand());
+      		  tempPtr = tempPtr.getVRPNext();
+      	  }
+      	  System.out.println("Done Printing");    	  
+        }
+      }
+
+      
+      
+      if (costCell != null) {
+        prevCell = costCell;
+        nextCell = (VRPTWNodes) prevCell.getNext();
+        prevCell.setNext(theCell);
+        theCell.setPrev(prevCell);
+        theCell.setNext(nextCell);
+        nextCell.setPrev(theCell);
+      }
+      else {
+        return false;
+      }
+    }
+    */
+  }
+
+  //The WhoAmI methods gives the id of the assigned object
+  //It is a static method so that it can be accessed without creating an object
+  public static String WhoAmI() {
+    return ("Insertion Type: Linear greedy insertion heuristic");
+  }
+}

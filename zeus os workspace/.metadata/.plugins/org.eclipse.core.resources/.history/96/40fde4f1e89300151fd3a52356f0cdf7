@@ -1,0 +1,112 @@
+package edu.sru.thangiah.zeus.vrptw;
+
+public class VRPTWProblemInfo
+{
+	private int numDepots;
+	private int numTrucks;
+	private int numShipments;
+	private int maxCapacity;
+	private int maxDuration;
+	
+	private VRPTWTruckType truckType;
+
+	private SmallestPolarAngleToDepot selectionHeuristic;
+	private SolomonsSequentialInsert insertionHeuristic;
+	
+	
+	public VRPTWProblemInfo()
+	{
+		numDepots = 0;
+		numTrucks = 0;
+		numShipments = 0;
+		maxCapacity = 0;
+		maxDuration = 0;
+		truckType = null;
+		selectionHeuristic = null;
+		insertionHeuristic = null;
+	}
+	
+	public int getNumDepots()
+	{
+		return this.numDepots;
+	}
+	
+	public int getNumTrucks()
+	{
+		return this.numTrucks;
+	}
+	
+	public int getNumShipments()
+	{
+		return this.numShipments;
+	}
+	
+	public int getMaxCapacity()
+	{
+		return this.maxCapacity;
+	}
+	
+	public int getMaxDuration()
+	{
+		return this.maxDuration;
+	}
+	
+	public VRPTWTruckType getTruckType()
+	{
+		return this.truckType;
+	}
+	
+	public VRPTWShipmentLinkedList getSelectionHeuristic()
+	{
+		return this.selectionHeuristic;
+	}
+	
+	public VRPTWNodesLinkedList getInsertionHeuristic()
+	{
+		return this.insertionHeuristic;
+	}
+	
+
+	
+	public void setNumDepots(int d)
+	{
+		this.numDepots = d;
+	}
+	
+	public void setNumTrucks(int t)
+	{
+		this.numTrucks = t;
+	}
+	
+	public void setNumShipments(int s)
+	{
+		this.numShipments = s;
+	}
+	
+	public void setMaxCapacity(int Q)
+	{
+		this.maxCapacity = Q;
+	}
+	
+	public void setMaxDuration(int D)
+	{
+		this.maxDuration = D;
+	}
+	
+	public void setTruckType(VRPTWTruckType tt)
+	{
+		this.truckType = tt;
+	}
+	
+	public void setSelectionHeuristic(VRPTWShipmentLinkedList sh)
+	{
+		this.selectionHeuristic = sh;
+	}
+	
+	public void setInsertionHeuristic(VRPTWNodesLinkedList ih)
+	{
+		this.insertionHeuristic = ih;
+	}
+	
+	
+}

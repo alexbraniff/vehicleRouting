@@ -1,0 +1,49 @@
+VRP
+  read file
+    open file
+    parse problem info line
+      set problem info
+        num depots
+        prob type
+        num vehicles
+        num shipments
+        num days
+        max capacity
+        max distance
+        truck types
+    parse shipment lines
+      set main shipments
+        id
+        x
+        y
+        num combinations
+        demand
+        type
+        combinations
+        cu comb
+    parse depot lines
+      set main depots
+        id
+        x
+        y
+        set main trucks
+          type
+          x
+          y
+  print to console
+  write data
+  check that shipments !empty
+  set selection heuristic
+  set insertion heuristic
+  create initial routes
+    null curDepot
+    null curShipment
+    check sel/ins heuristics !empty
+    while at least 1 shipment !assigned
+      get depot info
+      assign a shipment to main shipments
+      set shipment assigned flag
+    calculate depotLLLevelCostFunction stats
+  write solution
+  run qa
+  post to gui

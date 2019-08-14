@@ -1,0 +1,439 @@
+package edu.sru.thangiah.zeus.vrptw;
+
+import edu.sru.thangiah.zeus.core.Depot;
+//import the parent class
+import edu.sru.thangiah.zeus.core.DepotLinkedList;
+import edu.sru.thangiah.zeus.core.ProblemInfo;
+
+/**
+ *
+ * <p>Title:</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2005</p>
+ * <p>Company: </p>
+ * @author Sam R. Thangiah
+ * @version 2.0
+ */
+
+public class VRPTWDepotLinkedList
+    extends DepotLinkedList
+    implements java.io.Serializable, java.lang.Cloneable {
+
+	private int noDepots;
+  public VRPTWDepotLinkedList() {
+	//Housekeeping for the linked list
+	setHead(new VRPTWDepot()); //header node for head
+	setTail(new VRPTWDepot()); //tail node for tail
+	linkHeadTail();			  //point head and tail to each other
+			
+	//Assign the attributes	
+    setAttributes(new VRPTWAttributes());
+    noDepots = 0;
+  }
+  
+  /**
+   * Attempts to add the depot to the linked list
+   * @param theDepot the depot to add
+   * @return true if depot was added
+   */
+  public boolean insertDepotLast(VRPTWDepot theDepot)
+  {
+		// the route is empty
+		if (getHead().getNext() == getTail()) {
+			getHead().setNext(theDepot);
+			getTail().setPrev(theDepot);
+			theDepot.setPrev(getHead());
+			theDepot.setNext(getTail());
+		}
+		// the route is not empty
+		else {
+
+			theDepot.setNext(getTail());
+			theDepot.setPrev(getTail().getPrev());
+			getTail().getPrev().setNext(theDepot);
+			getTail().setPrev(theDepot);
+
+		}	
+		//increase the number of depots in the linked list
+		setNoDepots(getNoDepots()+1);
+		return true; 
+  }
+	/*
+	 * Get no depots in the linked list
+	 */
+	public int getNoDepots() {
+		return noDepots;
+	}
+
+
+	/*
+	 * Set the no of depots in the linked list
+	 */
+	public void setNoDepots(int noDepots) {
+		this.noDepots = noDepots;
+	}
+
+
+ 
+  /**
+   * Attempts to insert the shipment into the depot linked list. Will loop
+   * through the available depots until a depot is found that can accommodate
+   * the shipment
+   * @param theShipment the shipment to route
+   * @return true if shipment serviced, false if not.
+   */
+  public boolean insertShipment(VRPTWProblemInfo problemInfo, VRPTWShipment theShipment) {
+		System.out.println("");
+		
+    boolean status = false;
+
+    VRPTWDepot depot = (VRPTWDepot) this.getHead().getNext();
+
+    while (depot != this.getTail()) {
+        VRPTWTruckLinkedList truckLL = (VRPTWTruckLinkedList) depot.getMainTrucks();
+        //Get truck to insert the shipment
+        truckLL = (VRPTWTruckLinkedList) depot.getMainTrucks();
+        //status = depot.getMainTrucks().insertShipment(theShipment);
+        status = truckLL.insertShipment(problemInfo, theShipment);
+
+        if (status) {
+            break;
+        }
+        depot = (VRPTWDepot) depot.getNext();
+    }
+
+    return status;
+  }
+
+  /**
+ * Returns the first depot in the linked list
+ * @return first depot
+ */
+
+public VRPTWDepot getVRPTWHead() {
+ return (VRPTWDepot) getHead();
+}
+
+
+  /**
+   * Returns an exact copy of the depot linked list
+   * @return Object depot linked list copy
+   */
+  public Object clone() {
+    VRPTWDepotLinkedList clonedDepotLinkedList = new VRPTWDepotLinkedList();
+
+    clonedDepotLinkedList.setAttributes((VRPTWAttributes)this.getAttributes().clone());
+    clonedDepotLinkedList.setHead((VRPTWDepot)this.getHead().clone());
+
+    //must establish the links at this level to avoid recursing out of control
+    clonedDepotLinkedList.getHead().setPrev(null);
+
+    if (this.getHead() != this.getTail()) {
+      VRPTWDepot currentDepot = (VRPTWDepot) clonedDepotLinkedList.getHead();
+      VRPTWDepot nextDepot = (VRPTWDepot)this.getHead().getNext();
+
+      while (nextDepot != null) {
+        currentDepot.setNext( (VRPTWDepot) nextDepot.clone()); //create the next depot
+        currentDepot.getNext().setPrev(currentDepot); //set the next depot's prev
+        currentDepot = (VRPTWDepot) currentDepot.getNext();
+        nextDepot = (VRPTWDepot) nextDepot.getNext();
+
+        //once next is null, we have found the tail of the list
+        if (nextDepot == null) {
+          clonedDepotLinkedList.setTail(currentDepot);
+          currentDepot.setNext(null);
+        }
+
+      }
+    }
+    else { //only 1 depot
+      clonedDepotLinkedList.setTail(clonedDepotLinkedList.getHead());
+    }
+    return clonedDepotLinkedList;
+  }
+
+	public void linkRoutes(VRPTWProblemInfo problemInfo)
+	{
+	  	// Go through each truckLL in mainDepot
+	  	// Look at each other truckLL until you see the same one again
+	  	// without finding a good link
+	  	// If a good link is found
+	  	// merge the front truckLL with the last truckLL
+	  	// A good link is one where setting lastNodeLL's first node's
+	  	// previous node to firstNodeLL's last node and fNLL's last node's
+	  	// next node to lNLL's first node does not push lNLL's first to n
+	  	// beginTimes past their late times and the total demand of fNLL
+	  	// and lNLL do not exceed capacity and the total travel time of
+	  	// fNLL and lNLL does not exceed the maximum.
+		
+		VRPTWDepot theDepot = (VRPTWDepot) this.getHead().getNext();
+		while(theDepot != (VRPTWDepot) this.getTail())
+		{
+			int truckNo = 1;
+			
+			VRPTWTruckLinkedList theTruckLL = (VRPTWTruckLinkedList) theDepot.getMainTrucks();
+			VRPTWTruck theTruck = (VRPTWTruck) theTruckLL.getHead().getNext();
+			
+			VRPTWTruck lastFirstIncompatibleTruckSeen = null;
+			VRPTWTruck testTruck = null;
+			while(theTruck != (VRPTWTruck) theTruckLL.getTail())
+			{
+				if(theTruck.getIsLinked())
+				{
+					truckNo++;
+					theTruck = (VRPTWTruck) theTruck.getNext();
+				}
+				
+				testTruck = (VRPTWTruck) theTruck.getNext();
+				
+				VRPTWNodesLinkedList mn = (VRPTWNodesLinkedList) theTruck.getMainNodes();
+				VRPTWNodes c = (VRPTWNodes) mn.getHead().getNext();
+				String s = "(0)";
+				while(c != (VRPTWNodes) mn.getTail())
+				{
+					s += " - (" + c.getIndex() + ")";
+					
+					c = (VRPTWNodes) c.getNext();
+				}
+				s += " - (0)";
+				System.out.println("SavingsLink: " + s);
+				System.out.println("SavingsLink: Looking for routes to combine with truck #" + truckNo);
+				int testTruckNo = 2;
+				
+				VRPTWNodesLinkedList firstLL = null;
+				VRPTWNodes lastNodeFirstLL = null;
+				
+				VRPTWNodesLinkedList lastLL = null;
+				VRPTWNodes firstNodeLastLL = null;
+				
+				while(testTruck != lastFirstIncompatibleTruckSeen)
+				{
+					
+					firstLL = (VRPTWNodesLinkedList) theTruck.getMainNodes();
+					lastNodeFirstLL = (VRPTWNodes) firstLL.getTail().getPrev();
+					
+					lastLL = (VRPTWNodesLinkedList) testTruck.getMainNodes();
+					firstNodeLastLL = (VRPTWNodes) lastLL.getHead().getNext();
+					
+					if(testTruck.getIsLinked())
+					{
+						System.out.println("SavingsLink: Test truck is already linked; remove");
+						testTruckNo++;
+						
+						testTruck = (VRPTWTruck) testTruck.getNext();
+						
+						theTruckLL.removeTruck((VRPTWTruck) testTruck.getPrev());
+						
+						if(testTruck == (VRPTWTruck) theTruckLL.getTail())
+						{
+							testTruckNo = 1;
+							System.out.println("SavingsLink: Test truck hit tail; roundabout to first truck");
+							testTruck = (VRPTWTruck) theTruckLL.getHead().getNext();
+						}
+						
+						continue;
+					}
+					
+					if(testTruck == theTruck)
+					{
+						System.out.println("SavingsLink: Test truck is theTruck; skip");
+						testTruckNo++;
+						
+						testTruck = (VRPTWTruck) testTruck.getNext();
+						
+						if(testTruck == (VRPTWTruck) theTruckLL.getTail())
+						{
+							testTruckNo = 1;
+							System.out.println("SavingsLink: Test truck hit tail; roundabout to first truck");
+							testTruck = (VRPTWTruck) theTruckLL.getHead().getNext();
+						}
+						
+						continue;
+					}
+					
+					double firstDemand = theTruck.getAttributes().getTotalDemand();
+					double secondDemand = testTruck.getAttributes().getTotalDemand();
+					double maxDemand = problemInfo.getMaxCapacity();
+
+					double firstTravelTime = theTruck.getAttributes().getTotalTravelTime();
+					double secondTravelTime = testTruck.getAttributes().getTotalTravelTime();
+					double maxTravelTime = problemInfo.getMaxDuration();
+					
+					if((firstDemand + secondDemand > maxDemand) || (firstTravelTime + secondTravelTime > maxTravelTime))
+					{
+						System.out.println("SavingsLink: New demand or travel time would exceed the max; skip");
+						testTruckNo++;
+						
+						testTruck = (VRPTWTruck) testTruck.getNext();
+						
+						if(testTruck == (VRPTWTruck) theTruckLL.getTail())
+						{
+							testTruckNo = 1;
+							System.out.println("SavingsLink: Test truck hit tail; roundabout to first truck");
+							testTruck = (VRPTWTruck) theTruckLL.getHead().getNext();
+						}
+						
+						continue;
+					}
+					
+					System.out.println("SavingsLink: Testing truck #" + testTruckNo);
+					boolean isCompatible = true;
+
+					System.out.println("SavingsLink: Last Node First LL (" + lastNodeFirstLL.getShipment().getIndex() + ")");
+					double fnlllOriginalBeginTime = firstNodeLastLL.getBeginTime();
+					System.out.println("SavingsLink: First Node Last LL (" + firstNodeLastLL.getShipment().getIndex() + ") Original Begin Time = " + fnlllOriginalBeginTime);
+					
+					VRPTWNodes firstLLTail = (VRPTWNodes) firstLL.getTail();
+					VRPTWNodes lastLLHead = (VRPTWNodes) lastLL.getHead();
+					
+					VRPTWNodes currNode = (VRPTWNodes) firstNodeLastLL;
+					
+					while(currNode != (VRPTWNodes) lastLL.getTail())
+					{
+						VRPTWNodes nextNode = (VRPTWNodes) lastLL.getHead().getNext();
+						
+						currNode.getNext().setPrev(currNode.getPrev());
+						currNode.getPrev().setNext(currNode.getNext());
+						currNode.setNext(null);
+						currNode.setPrev(null);
+						
+						firstLL.insertLastNode(currNode);
+						
+						currNode = nextNode;
+					}
+					firstLL.updateBeginTimes();
+					
+					double fnlllNewBeginTime = firstNodeLastLL.getBeginTime();
+					System.out.println("SavingsLink: First Node Last LL (" + firstNodeLastLL.getShipment().getIndex() + ") New Begin Time = " + fnlllNewBeginTime + ", Late = " + firstNodeLastLL.getLate());
+					
+					double pushForward = fnlllNewBeginTime - fnlllOriginalBeginTime;
+					
+					if(pushForward > 0)
+					{
+						VRPTWNodes testNode = firstNodeLastLL;
+						while(testNode != (VRPTWNodes) firstLL.getTail())
+						{
+							System.out.println("SavingsLink: Push Forward at " + firstNodeLastLL.getShipment().getIndex() + " = " + pushForward);
+							if(testNode.getBeginTime() > testNode.getLate())
+							{
+								isCompatible = false;
+								break;
+							}
+							testNode = (VRPTWNodes) testNode.getNext();
+						}
+					}
+
+
+					if(!isCompatible)
+					{
+						System.out.println("SavingsLink: Truck #" + testTruckNo + " is NOT compatible with #" + truckNo);
+						if(lastFirstIncompatibleTruckSeen == null)
+						{
+							System.out.println("SavingsLink: New last first incompatible truck seen is #" + testTruckNo);
+							lastFirstIncompatibleTruckSeen = testTruck;
+						}
+
+						testTruckNo++;
+						testTruck = (VRPTWTruck) testTruck.getNext();
+						
+						if(testTruck == (VRPTWTruck) theTruckLL.getTail())
+						{
+							testTruckNo = 1;
+							testTruck = (VRPTWTruck) theTruckLL.getHead().getNext();
+						}
+
+						lastNodeFirstLL.setNext(firstLLTail);
+						
+						currNode = firstNodeLastLL;
+						
+						while(currNode != (VRPTWNodes) firstLL.getTail())
+						{
+							VRPTWNodes next = (VRPTWNodes) currNode.getNext();
+
+							currNode.getNext().setPrev(currNode.getPrev());
+							currNode.getPrev().setNext(currNode.getNext());
+							currNode.setNext(null);
+							currNode.setPrev(null);
+							
+							lastLL.insertLastNode(currNode);
+							
+							currNode = next;
+						}
+						
+						continue;
+					}
+					else
+					{
+						System.out.println("SavingsLink: Truck #" + testTruckNo + " is compatible with #" + truckNo + "; leaving combined and marking lastLL linked");
+
+						ProblemInfo.nodesLLLevelCostF.calculateTotalsStats(currNodeLL);
+						//testTruck.setIsLinked(true);
+						
+						if(testTruck == (VRPTWTruck) theTruckLL.getTail())
+						{
+							testTruckNo = 1;
+							testTruck = (VRPTWTruck) theTruckLL.getHead().getNext();
+						}
+						
+						if(lastFirstIncompatibleTruckSeen != null)
+						{
+							System.out.println("SavingsLink: New last first incompatible truck seen is null");
+							lastFirstIncompatibleTruckSeen = null;
+						}
+						
+						VRPTWTruck newTruck = (VRPTWTruck) testTruck.getPrev();
+						
+						testTruck.getPrev().setNext(testTruck.getNext());
+						testTruck.getNext().setPrev(testTruck.getPrev());
+						testTruck.setPrev(null);
+						testTruck.setNext(null);
+						
+						testTruckNo--;
+						testTruck = newTruck;
+					}
+
+					mn = (VRPTWNodesLinkedList) theTruck.getMainNodes();
+					c = (VRPTWNodes) mn.getHead().getNext();
+					s = "(0)";
+					while(c != (VRPTWNodes) mn.getTail())
+					{
+						s += " - (" + c.getIndex() + ")";
+						
+						c = (VRPTWNodes) c.getNext();
+					}
+					s += " - (0)";
+					System.out.println("SavingsLink: " + s);
+					VRPTWNodesLinkedList mainNodes = (VRPTWNodesLinkedList) testTruck.getMainNodes();
+					VRPTWNodes current = (VRPTWNodes) mainNodes.getHead().getNext();
+					String str = "(0)";
+					while(current != (VRPTWNodes) mainNodes.getTail())
+					{
+						str += " - (" + current.getIndex() + ")";
+						
+						current = (VRPTWNodes) current.getNext();
+					}
+					str += " - (0)";
+					System.out.println("SavingsLink: " + str);
+					
+					System.out.println("SavingsLink: Truck #" + testTruckNo + " is linked? " + testTruck.getIsLinked());
+					
+					testTruckNo++;
+					testTruck = (VRPTWTruck) testTruck.getNext();
+					
+					if(testTruck == (VRPTWTruck) theTruckLL.getTail())
+					{
+						System.out.println("SavingsLink: Test truck hit tail; roundabout to First truck");
+						testTruckNo = 1;
+						testTruck = (VRPTWTruck) theTruckLL.getHead().getNext();
+					}
+				}
+				
+				truckNo++;
+				theTruck = (VRPTWTruck) theTruck.getNext();
+			}
+			
+			theDepot = (VRPTWDepot) theDepot.getNext();
+		}
+		
+	}
+}

@@ -1,0 +1,391 @@
+package edu.sru.thangiah.zeus.vrptw;
+
+//import the parent class
+import edu.sru.thangiah.zeus.core.TruckLinkedList;
+import edu.sru.thangiah.zeus.core.Settings;
+import edu.sru.thangiah.zeus.core.ProblemInfo;
+
+/**
+ *
+ * <p>Title:</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2005</p>
+ * <p>Company: </p>
+ * @author Sam R. Thangiah
+ * @version 2.0
+ */
+
+public class VRPTWTruckLinkedList
+    extends TruckLinkedList
+    implements java.io.Serializable, java.lang.Cloneable {
+
+	private int numTrucks;
+	
+	
+	/**
+	 * Constructor
+	 */
+	public VRPTWTruckLinkedList()
+	{
+		//Housekeeping for the linked list
+		setHead(new VRPTWTruck()); //header node for head
+		setTail(new VRPTWTruck()); //tail node for tail
+		linkHeadTail();			  //point head and tail to each other
+		
+		this.numTrucks = 0;
+		
+		//Assign the attributes	
+		setAttributes(new VRPTWAttributes());
+	}
+
+	/**
+   * Returns the first truck in the linked list
+   * @return first truck
+   */
+  public VRPTWTruck getVRPTWHead() {
+    return (VRPTWTruck) super.getHead();
+  }
+  
+  /**
+   * Returns the tail node truck in the linked list
+   * @return first truck
+   */
+  public VRPTWTruck getVRPTWTail() {
+    return (VRPTWTruck) super.getTail();
+  }
+
+  /* Will insert a truck into the truck's linked list
+   * @param truck the truck to insert
+   * @return if it was inserted or not
+   */
+ /* public boolean insertTruck(VRPTruck truck) {
+    VRPTruck currentTruck = (VRPTruck)super.getHead();
+
+    truck.setPrev(null);
+    truck.setNext(null);
+
+    if (getHead() == null) {
+      //no buses exist in list, insert at head
+      setTail(truck);
+      setHead(truck);
+
+      return true;
+    }
+    else {
+      //at least head and last buses exist, loop to find insertion
+      currentTruck = (VRPTruck) getHead().getNext();
+
+      while (currentTruck != null) {
+        if (truck.getTruckNum() < currentTruck.getTruckNum()) {
+          currentTruck.getPrev().setNext(truck);
+          truck.setPrev(currentTruck.getPrev());
+          truck.setNext(currentTruck);
+          currentTruck.setPrev(truck);
+
+          return true;
+        }
+        currentTruck = (VRPTruck) currentTruck.getNext();
+      }
+    }
+    //put the bus at the end
+    getTail().setNext(truck);
+    truck.setPrev(getTail());
+    setTail(truck);
+
+    return true; //bus is always inserted
+  }
+*/
+  /**
+   * Attempts to insert a shipment into the Truck linked list. Will attempt
+   * to insert the shipment into each truck until one is found that can
+   * accommodate the shipment
+   * @param theShipment the shipment to insert
+   * @return true if shipment serviced by a truck, false if not.
+   */
+  public boolean insertShipment(VRPTWProblemInfo problemInfo, VRPTWShipment theShipment) {
+    boolean status = false;
+    boolean isDiagnostic = true;
+
+    //VRPTWTruck truck = (VRPTWTruck) this.getHead().getNext();
+    //int truckNum = 1;
+    
+    // This is a sequential insert
+    // I want to look at the last truck inserted (the current truck)
+    // Insert shipment if it does not make the route infeasible
+    // Made infeasible if it violates time windows,
+    // vehicle arrival time at nodes, and constraints
+    // If not feasible, add a new truck
+    
+    double maxDemand = problemInfo.getMaxCapacity();
+    double maxTravelTime = problemInfo.getMaxDuration();
+    
+    double shipDemand = theShipment.getDemand();
+    
+    VRPTWTruck truck = (VRPTWTruck) this.getTail().getPrev();
+    VRPTWNodesLinkedList mainNodes = (VRPTWNodesLinkedList) truck.getMainNodes();
+    
+    double truckDemand = ProblemInfo.nodesLLLevelCostF.getTotalDemand(mainNodes);
+    double truckTravelTime = ProblemInfo.nodesLLLevelCostF.getTotalTravelTime(mainNodes);
+    
+    VRPTWNodes nodeToInsertAfter = (VRPTWNodes) mainNodes.getTail().getPrev();
+    double xNTIA = nodeToInsertAfter.getShipment().getXCoord();
+    double yNTIA = nodeToInsertAfter.getShipment().getYCoord();
+
+    double xShip = theShipment.getXCoord();
+    double yShip = theShipment.getYCoord();
+    
+    double deltaX = xShip - xNTIA;
+    double deltaY = yShip - yNTIA;
+    
+    double timeBetween = Math.abs(Math.sqrt((deltaX * deltaX) + (deltaY * deltaY)));
+    
+    // See if the truck can accept another shipment
+    if((truckDemand + shipDemand) <= maxDemand && (truckTravelTime + timeBetween) <= maxTravelTime)
+    {
+    	if(mainNodes.insertShipment(theShipment))
+    	{
+    		
+    	}
+    }
+    else
+    {
+		System.out.println("** Shipment will not work for current truck");
+    	// Truck is full
+    	// Make a new one
+        VRPTWTruckType type = (VRPTWTruckType) ProblemInfo.truckTypes.elementAt(0);
+    	VRPTWTruck newTruck = new VRPTWTruck(type, (int) truck.getDepotX(), (int) truck.getDepotY());
+    	VRPTWNodesLinkedList newNodes = (VRPTWNodesLinkedList) newTruck.getMainNodes();
+    	
+    	//attempt to put this shipment into the new truck
+    	if(newNodes.insertShipment(theShipment)){
+    		//the customer was inserted to the new truck, so insert the new truck to the linked list
+    		System.out.println("** Inserting new Truck");
+    		System.out.println("Depot x and y is:" + newTruck.getDepotX() + " " + newTruck.getDepotY());
+    		this.insertTruckLast(newTruck);
+    	}
+    	else
+    	{
+    		System.out.println("** Inserting new Truck Failed!");
+    		System.out.println("** Inserting shipment Failed!");
+    	}
+    }
+    
+    /*
+    while(truck != this.getTail())
+    {
+        
+    	VRPTWNodesLinkedList mainNodes = (VRPTWNodesLinkedList) truck.getVRPTWMainNodes();
+    	
+    	// Need to check truck travel time and capacity
+    	double totalDemand = ProblemInfo.nodesLLLevelCostF.getTotalDemand(mainNodes);
+    	double totalTravelTime = ProblemInfo.nodesLLLevelCostF.getTotalTravelTime(mainNodes);
+        System.out.println("Total demand for truck #" + truckNum + " is " + totalDemand + "/" + problemInfo.getMaxCapacity() + " and total travel time is " + totalTravelTime + "/" + problemInfo.getMaxDuration());
+        
+        // See if there are any nodes already in the truck's nodeLL
+        if(mainNodes.getSize() == 0)
+        {
+    		double deltaX = truck.getDepotX() - theShipment.getXCoord();
+    		double deltaY = truck.getDepotY() - theShipment.getYCoord();
+    		
+    		double dist = Math.abs(Math.sqrt((deltaX * deltaX) + (deltaY * deltaY)));
+    		
+        	// This truck has no shipments assigned to it
+        	if(closestTruck == null || dist < lowestDistance)
+        	{
+	        	// And no truck has been selected for insertion
+	        	// Lowest distance should be updated to distance
+	        	// from depot to theShipment
+
+    			closestTruckNum = truckNum;
+	    		closestTruck = truck;
+	    		lowestDistance = dist;
+        	}
+        }
+        else if((totalDemand + theShipment.getDemand()) <= problemInfo.getMaxCapacity())
+    	{
+    		// Get distance from each node shipment to theShipment 
+    		VRPTWNodes currNode = (VRPTWNodes) mainNodes.getHead().getNext();
+    		
+    		while(currNode != (VRPTWNodes) mainNodes.getTail())
+    		{
+	    		double deltaX = currNode.getShipment().getXCoord() - theShipment.getXCoord();
+	    		double deltaY = currNode.getShipment().getYCoord() - theShipment.getYCoord();
+	    		
+	    		double dist = Math.abs(Math.sqrt((deltaX * deltaX) + (deltaY * deltaY)));
+	    		
+	    		//System.out.println("Distance between truck #" + truckNum + " " + currNode.getShipment().toString() + " and " + theShipment.toString() + " is " + dist);
+	    		
+	    		// Distance == TimeTraveled between nodes at 1 unit distance per 1 unit time
+	    		if((totalTravelTime + dist) <= problemInfo.getMaxDuration())
+	    		{
+		    		if(closestTruck == null)
+		    		{
+		    			// First shipment comparison; just set it
+		    			closestTruckNum = truckNum;
+		    			closestTruck = truck;
+		    			lowestDistance = dist;
+		    		}
+		    		else if(dist < lowestDistance)
+		    		{
+		    			// Found a new best; keep track
+		    			closestTruckNum = truckNum;
+		    			closestTruck = truck;
+		    			lowestDistance = dist;
+		    		}
+	    		}
+	    		
+	    		currNode = (VRPTWNodes) currNode.getNext();
+    		}
+    	}
+    	truck = (VRPTWTruck) truck.getNext();
+    	truckNum++;
+    }
+    
+    if(closestTruck != null)
+    {
+        status = closestTruck.getVRPTWMainNodes().insertShipment(theShipment);
+        */
+        
+        
+        /*
+        // We inserted the shipment, now need to see if it makes the route infeasible
+        if(closestTruck.getVRPTWMainNodes().getAttributes().getTotalPenalty() > 0)
+        {
+        	status = false;
+        	// Remove the shipment
+        	VRPTWNodes node = (VRPTWNodes) closestTruck.getVRPTWMainNodes().getHead().getNext();
+        	while(node != (VRPTWNodes) closestTruck.getVRPTWMainNodes().getTail())
+        	{
+        		if(node.getShipment() == theShipment)
+        		{
+        			node.getPrev().setNext(node.getNext());
+        			node.getNext().setPrev(node.getPrev());
+        		}
+        		node = (VRPTWNodes) node.getNext();
+        	}
+        }
+        */
+    
+    
+    /*
+    }
+    
+    // break out of the loop if a good truck is found.
+    if (status) {
+    	System.out.println("Truck #" + closestTruckNum + " can accept " + theShipment.toString());
+    	System.out.println("shipment info: " + theShipment.getXCoord() + "," + theShipment.getYCoord());
+    	return true;
+    }
+    else
+    {
+    	System.out.println("Could not find a good truck for shipment " + theShipment.getIndex());
+    	System.out.println("shipment info: " + theShipment.getXCoord() + "," + theShipment.getYCoord());
+    	return false;
+    }
+    */
+    
+    /*
+    while (truck != this.getTail()) {
+    	VRPTWNodesLinkedList mainNodes = (VRPTWNodesLinkedList) truck.getVRPTWMainNodes();
+    	
+    	// Need to check truck travel time and capacity
+    	double totalDemand = ProblemInfo.nodesLLLevelCostF.getTotalDemand(mainNodes);
+    	double totalTravelTime = ProblemInfo.nodesLLLevelCostF.getTotalTravelTime(mainNodes);
+    	
+    	if(totalDemand < problemInfo.getMaxCapacity() && totalTravelTime < problemInfo.getMaxDuration())
+    	{
+    	    status = mainNodes.insertShipment(theShipment);
+    	}
+    	
+	
+	    // break out of the loop if a good truck is found.
+	    if (status) {
+	    	System.out.println("Found a good truck #" + truckNo + " for shipment " + theShipment.getIndex());
+	    	System.out.println("shipment info: " + theShipment.getXCoord() + "," + theShipment.getYCoord());
+	      break;
+	    }
+	    else
+	    {
+	    	System.out.println("Could not find a good truck #" + truckNo + " for shipment " + theShipment.getIndex());
+	    	System.out.println("shipment info: " + theShipment.getXCoord() + "," + theShipment.getYCoord());
+	    }
+
+	    truck = (VRPTWTruck) truck.getNext();
+	    truckNo++;
+	    //System.out.println("Loop count in insert "+loopCount++);
+    }
+    */
+
+    /*
+    //can we create new trucks?
+    if ( (status == false) && (Settings.lockTrucks == false)) {
+     //create a pointer to the last truck for reference
+      VRPTWTruck last = (VRPTWTruck)this.getTail().getPrev();
+      VRPTWTruck first = (VRPTWTruck)this.getHead();
+
+      //loop to find the correct truck type for this customer
+      for (int i = 0; i < ProblemInfo.truckTypes.size(); i++) {
+        VRPTWTruckType type = (VRPTWTruckType) ProblemInfo.truckTypes.elementAt(i);
+        
+    	VRPTWTruck newTruck    = new VRPTWTruck(type,
+                first.getNext().getDepotX(),
+                first.getNext().getDepotY());
+    	
+
+    	//attempt to put this shipment into the new truck
+    	status = newTruck.getVRPMainNodes().insertShipment(theShipment);
+
+    	if (status == true) {
+    		//the customer was inserted to the new truck, so insert the new truck to the linked list
+    		System.out.println("** Inserting new Truck");
+    		System.out.println("Depot x and y is:"+ first.getNext().getDepotX()+" "+first.getNext().getDepotY());
+    		this.insertTruckLast(newTruck);
+
+    		return status;
+    	}
+    	else {
+    		//customer could not be inserted into the new truck so return false
+    		//and dont insert the new truck into the linked list (garbage collector
+    		//will delete it)
+    		return status;
+    	}
+      }
+    }
+  */
+  }
+
+  /**
+   * Returns a clone of this object
+   * @return Object clone
+   */
+  public Object clone() {
+    VRPTWTruckLinkedList clonedTruckLinkedList = new VRPTWTruckLinkedList();
+
+    clonedTruckLinkedList.setAttributes((VRPTWAttributes)this.getAttributes().clone());
+    clonedTruckLinkedList.setHead((VRPTWTruck)this.getHead().clone());
+
+    if (this.getHead() != this.getTail()) {
+      VRPTWTruck currentTruck = (VRPTWTruck) clonedTruckLinkedList.getHead();
+      VRPTWTruck nextTruck = (VRPTWTruck)this.getHead().getNext();
+
+      while (nextTruck != null) {
+        currentTruck.setNext( (VRPTWTruck) nextTruck.clone()); //create the next depot
+        currentTruck.getNext().setPrev(currentTruck); //set the next depot's prev
+        currentTruck = (VRPTWTruck) currentTruck.getNext();
+        nextTruck = (VRPTWTruck) nextTruck.getNext();
+
+        //once next is null, we have found the tail of the list
+        if (nextTruck == null) {
+          clonedTruckLinkedList.setTail(currentTruck);
+          currentTruck.setNext(null);
+        }
+
+      }
+    }
+    else { //only 1 depot
+      clonedTruckLinkedList.setTail(clonedTruckLinkedList.getHead());
+    }
+    return clonedTruckLinkedList;
+  }
+
+}

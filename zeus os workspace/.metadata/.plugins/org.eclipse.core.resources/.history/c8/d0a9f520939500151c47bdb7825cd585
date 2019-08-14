@@ -1,0 +1,754 @@
+package edu.sru.thangiah.zeus.vrptw;
+
+import java.io.PrintStream;
+
+/**
+ *
+ * <p>Title:</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2005</p>
+ * <p>Company: </p>
+ * @author Sam R. Thangiah
+ * @version 2.0
+ */
+
+
+
+//import the parent class
+import edu.sru.thangiah.zeus.core.ShipmentLinkedList;
+import edu.sru.thangiah.zeus.core.Shipment;
+import edu.sru.thangiah.zeus.core.ProblemInfo;
+import edu.sru.thangiah.zeus.core.Settings;
+
+public class VRPTWShipmentLinkedList
+    extends ShipmentLinkedList
+    implements java.io.Serializable, java.lang.Cloneable {
+
+
+  /**
+   * Constructor for the shipment linked list
+   * Define it as below
+   */
+  public VRPTWShipmentLinkedList() 
+  {
+      setHead(new VRPTWShipment()); //header node for head
+      setTail(new VRPTWShipment()); //tail node for tail
+      linkHeadTail();			  //point head and tail to each other
+      setNumShipments(0);
+  }
+	
+
+/**
+   * insert the shipment into the linked list
+   * Constructor
+   * @param num index
+   * @param x x-coordinate
+   * @param y y-coordinate
+   * @param q demand
+   * @param e earliest arrival time
+   * @param l latest arrival time
+   * @param t service time
+   */
+
+  public void insertShipment(int num, int x, int y, int q, int e, int l, int t) {
+      VRPTWShipment thisShip = new VRPTWShipment(num, x, y, q, e, l, t);
+      //add the instance to the linked list - in this case it is added at the end of the list
+      //the total number of shipments is incremented in the insert
+      super.insertLast(thisShip);
+  }
+  
+  public void insertShipment(VRPTWShipment theShipment) {
+      //add the instance to the linked list - in this case it is added at the end of the list
+      //the total number of shipments is incremented in the insert
+      super.insertLast(theShipment);
+  }
+
+  /**
+   * Returns the first shipment in the linked list
+   * @return first shipment
+   */
+  public VRPTWShipment getVRPTWHead() {
+    return (VRPTWShipment) super.getHead();
+  }
+  
+  /**
+   * Returns the tail shipment in the linked list
+   * @return first shipment
+   */
+  public VRPTWShipment getVRPTWTail() {
+    return (VRPTWShipment) super.getTail();
+  }
+
+
+  /**
+   * This method will get the next shipment that is to be inserted based on the
+   * type of shipment selection that has been defined in the main method
+   * for the variable ProblemInfo.selectShipType
+   * @param currDepot current depot being considered for the shipment
+   * @param currDepotLL Depot linked list of the problem being solved
+   * @param currShipmentLL shipment linked list from which the shipment to be
+   * insertion is to be selected
+   * @return VRPShipment the shipment to be inserted
+   */
+
+  public VRPTWShipment getNextInsertShipment(VRPTWProblemInfo problemInfo,
+		  VRPTWDepotLinkedList currDepotLL,
+		  VRPTWDepot currDepot,
+		  VRPTWShipmentLinkedList currShipmentLL,
+		  VRPTWShipment currShip) {
+
+	  VRPTWShipment theShip = null;
+	  
+	  switch(problemInfo.getHeuristicMode())
+	  {
+	  case 1:
+		  theShip = ((SmallestPolarAngleToDepot) problemInfo.getSelectionHeuristic()).getSelectShipment(currDepotLL, currDepot, currShipmentLL,currShip);
+		  break;
+	  case 2:
+		  break;
+	  case 3:
+		  theShip = ((SmallestPolarAngleToDepot) problemInfo.getSelectionHeuristic()).getSelectShipment(currDepotLL, currDepot, currShipmentLL,currShip);
+		  break;
+	  }
+	  return theShip;
+  }
+
+
+  /**
+   * This method will get the next shipment that is to be inserted based on the
+   * type of shipment selection that has been defined in the main method
+   * for the variable ProblemInfo.selectShipType
+   * @param currDepot current depot being considered for the shipment
+   * @param currDepotLL Depot linked list of the problem being solved
+   * @param currShipmentLL shipment linked list from which the shipment to be
+   * insertion is to be selected
+   * @return lastNode the shipment to be inserted
+   */
+
+  public VRPTWShipment getNextNNInsertShipment(VRPTWProblemInfo problemInfo,
+		  VRPTWDepotLinkedList currDepotLL,
+		  VRPTWDepot currDepot,
+		  VRPTWShipmentLinkedList currShipmentLL,
+		  VRPTWNodes lastNode) {
+
+	  VRPTWShipment theShip = null;
+	  
+	  switch(problemInfo.getHeuristicMode())
+	  {
+	  case 1:
+		  break;
+	  case 2:
+		  theShip = ((ClosestEuclideanDistToLastShipment) problemInfo.getSelectionHeuristic()).getSelectShipment(currDepotLL, currDepot, currShipmentLL, lastNode);
+		  break;
+	  case 3:
+		  break;
+	  }
+	  return theShip;
+  }
+
+  /**
+   * This is a stub - Leave it as it is
+   * The concrere getSelectShipment will be declared by the class inheriting this
+   * class and implementing the actual insertion of shipment  *
+   * @param currShipmentLL shipment linked list from which the shipment to be
+   * insertion is to be selected
+   * @return VRPShipment the shipment to be inserted
+   */
+
+  public VRPTWShipment getSelectShipment(VRPTWDepotLinkedList currDepotLL,
+		  VRPTWDepot currDepot,
+		  VRPTWShipmentLinkedList currShipmentLL,
+		  VRPTWShipment currShip)
+  {
+	  return null;
+  }
+
+
+
+  /**
+   * Print out the shipment linked list to the console
+   * @param out PrintStream stream to output to
+   */
+  public void printVRPTWShipmentsToConsole() {
+  }
+
+
+
+  /**
+   * Writes the shipments to the print stream
+   * @param out PrintStream stream to output to
+   */
+  public void writeVRPTWShipments(PrintStream out) {
+  }
+}
+
+class SmallestEarlyTimeWindow
+extends VRPTWShipmentLinkedList
+{
+	/**
+	* Selects a shipment with earliest early time window from the available shipments
+	* @param currShipLL
+	*/
+	public VRPTWShipment getSelectShipment(VRPTWShipmentLinkedList currShipLL)
+   {
+		boolean isDiagnostic = false;
+
+		VRPTWShipment temp = (VRPTWShipment) currShipLL.getVRPTWHead().getNext();
+		while(temp.getIsAssigned())
+			temp = (VRPTWShipment) temp.getNext();
+		VRPTWShipment smallestEarlyTW = temp;
+		
+		while(temp != currShipLL.getVRPTWTail())
+		{
+			if(temp.getIsAssigned())
+			{
+				temp = temp.getVRPTWNext();
+				continue;
+			}
+			
+			if(temp.getEarly() < smallestEarlyTW.getEarly())
+			{
+				if(isDiagnostic)
+				{
+					Settings.printDebug(Settings.COMMENT, "Time window for " + temp.getIndex()
+													    + " (" + temp.getEarly() + ") earlier than "
+													    + smallestEarlyTW.getIndex()
+													    + " (" + smallestEarlyTW.getEarly() + ")");
+				}
+				
+				smallestEarlyTW = temp;
+			}
+			//Settings.printDebug(Settings.COMMENT, "Before temp is " + temp.getIndex());
+			temp = temp.getVRPTWNext();
+			//Settings.printDebug(Settings.COMMENT, "Now temp is " + temp.getIndex());
+		}
+		//Settings.printDebug(Settings.COMMENT, "Now temp is " + temp.getIndex());
+		Settings.printDebug(Settings.COMMENT, "Selected " + smallestEarlyTW);
+		return smallestEarlyTW;
+   }
+
+	  //The WhoAmI methods gives the id of the assigned object
+	  //It is a static method so that it can be accessed without creating an object
+	 public static String WhoAmI() {
+	   return("Selection Type: Earliest time window from available shipments");
+	 }
+}
+
+class TightestTimeWindow
+extends VRPTWShipmentLinkedList
+{
+	/**
+	* Selects a shipment with tightest time window from the available shipments
+	* @param currDepot
+	* @param currShipLL
+	*/
+	public VRPTWShipment getSelectShipment(VRPTWDepot currDepot, VRPTWShipmentLinkedList currShipLL)
+	{
+		boolean isDiagnostic = false;
+		
+		double depotX = currDepot.getXCoord();
+		double depotY = currDepot.getyCoord();
+
+		VRPTWShipment temp = (VRPTWShipment) currShipLL.getHead().getNext();
+		VRPTWShipment tightestTW = temp;
+		
+		while(temp.getIsAssigned())
+			temp = (VRPTWShipment) temp.getNext();
+		
+		//double depotToTempDistance = calcDist(depotX, temp.getXCoord(), depotY, temp.getYCoord());
+		double tempTW = (temp.getLate() - temp.getEarly());
+		double tightTW = tempTW;
+		
+		while(temp != (VRPTWShipment) currShipLL.getTail())
+		{
+			if(temp.getIsAssigned())
+			{
+				temp = temp.getVRPTWNext();
+				continue;
+			}
+
+			//Settings.printDebug(Settings.COMMENT, "Now temp is " + temp.getIndex());
+			/*Settings.printDebug(Settings.COMMENT, "--distance: " + depotToTempDistance
+												+ "\n\t --tempTW: " + tempTW
+												+ "\n\t --tightTW: " + tightTW);*/
+			if(tempTW < tightTW)
+			{
+				if(isDiagnostic)
+				{
+					Settings.printDebug(Settings.COMMENT, "New tightest TW is " + tightestTW.getIndex()
+														+ " (" + tightestTW.getXCoord() + "," + tightestTW.getYCoord()
+														+ ")\n@" + tightTW);
+				}
+				tightestTW = temp;
+				tightTW = tempTW;
+				Settings.printDebug(Settings.COMMENT, "NEW TIGHTEST TW " + tightestTW.toString()
+													+ "\n\t(tightness: " + tightTW + ")");
+			}
+			temp = (VRPTWShipment) temp.getNext();
+			
+			//depotToTempDistance = calcDist(depotX, temp.getXCoord(), depotY, temp.getYCoord());
+			tempTW = (temp.getLate() - temp.getEarly());
+		}
+		
+		Settings.printDebug(Settings.COMMENT, "Returning " + tightestTW.getIndex() + " @ " + tightTW);
+		return tightestTW;
+   }
+
+	  //The WhoAmI methods gives the id of the assigned object
+	  //It is a static method so that it can be accessed without creating an object
+	 public static String WhoAmI() {
+	   return("Selection Type: Tightest Time Window from available shipments");
+	 }
+}
+
+class GreatestEuclideanDistanceFromDepot
+extends VRPTWShipmentLinkedList
+{
+	/**
+	* Selects a shipment with greatest distance from the depot
+	* @param currDepot
+	* @param currShipLL
+	*/
+	public VRPTWShipment getSelectShipment(VRPTWDepot currDepot, VRPTWShipmentLinkedList currShipLL)
+   {
+		boolean isDiagnostic = false;
+
+		VRPTWShipment temp = (VRPTWShipment) currShipLL.getVRPTWHead().getNext();
+		VRPTWShipment furthestFromDepot = temp;
+		
+		while(temp.getIsAssigned())
+			temp = (VRPTWShipment) temp.getNext();
+		
+		double tempDist;
+		double farDist = 0;
+		
+		double depotX = currDepot.getXCoord();
+		double depotY = currDepot.getyCoord();
+		
+		while(temp != currShipLL.getVRPTWTail())
+		{
+			if(temp.getIsAssigned())
+			{
+				temp = temp.getVRPTWNext();
+				continue;
+			}
+			
+			tempDist = calcDist(depotX, temp.getXCoord(), depotY, temp.getYCoord());
+			if(tempDist > farDist)
+			{
+				farDist = tempDist;
+				furthestFromDepot = temp;
+			}
+			
+			temp = (VRPTWShipment) temp.getNext();
+		}
+		
+		return furthestFromDepot;
+   }
+
+	  //The WhoAmI methods gives the id of the assigned object
+	  //It is a static method so that it can be accessed without creating an object
+	 public static String WhoAmI() {
+	   return("Selection Type: Greatest euclidean distance from depot");
+	 }
+}
+
+//Select the shipment with the shortest distance to the last shipment
+class ClosestEuclideanDistToLastShipment
+extends VRPTWShipmentLinkedList {
+	private int delta1, delta2, delta3;
+	
+	public ClosestEuclideanDistToLastShipment(int d1, int d2, int d3)
+	{
+		this.delta1 = d1;
+		this.delta2 = d2;
+		this.delta3 = d3;
+	}
+	
+	  public VRPTWShipment getSelectShipment(VRPTWDepotLinkedList currDepotLL,
+			  VRPTWDepot currDepot,
+                                     VRPTWShipmentLinkedList currShipLL,
+                                     VRPTWNodes lastNode) {
+  //currDepotLL is the depot linked list of the problem
+  //currDepot is the depot under consideration
+  //currShipLL is the set of avaialble shipments
+  boolean isDiagnostic = false;
+  //VRPShipment temp = (VRPShipment) getHead(); //point to the first shipment
+  VRPTWShipment temp = (VRPTWShipment) currShipLL.getVRPTWHead().getNext(); //point to the first shipment
+  VRPTWShipment foundShipment = null; //the shipment found with the criteria
+  //double angle;
+  //double foundAngle = 360; //initial value
+  double distance;
+  double foundDistance = 200; //initial distance
+  double depotX, depotY;
+
+  //Get the X and Y coordinate of the depot
+  depotX = currDepot.getXCoord();
+  depotY = currDepot.getYCoord();
+
+  VRPTWShipment bestShipment = null;
+  Double bestCost = null;
+  
+  while(temp != (VRPTWShipment) currShipLL.getTail())
+  {
+	    //if the shipment is assigned, skip it
+	    if(temp.getIsAssigned())
+	    {
+	      if(isDiagnostic)
+	      {
+	        System.out.println("has been assigned");
+	      }
+	
+	      temp = (VRPTWShipment) temp.getNext();
+	
+	      continue;
+	    }
+	    
+	    double ax = depotX;
+	    double ay = depotY;
+	    double bx = temp.getXCoord();
+	    double by = temp.getYCoord();
+	
+	    double iBegin = 0;
+	    double iService = 0;
+	    
+	    if(lastNode != null)
+	    {
+	    	ax = lastNode.getShipment().getXCoord();
+	    	ay = lastNode.getShipment().getYCoord();
+	    	iBegin = lastNode.getBeginTime();
+	    	iService = lastNode.getServiceTime();
+	    }
+
+	    distance = calcDist(ax, bx, ay, by);
+	    
+	    double jBegin = iBegin + iService + distance;
+	    jBegin = Math.max(jBegin, temp.getEarly());
+	    
+	    double Tij = jBegin - (iBegin + iService);
+	    
+	    double vij = temp.getLate() - (iBegin + iService + distance);
+	    
+	    double cij = (this.delta1 * distance) + (this.delta2 * Tij) + (this.delta3 * vij); 
+	    
+	    //if(jBegin <= temp.getLate())
+	    //{
+		    if(bestCost == null)
+		    {
+		    	bestShipment = temp;
+		    	bestCost = cij;
+		    }
+		    else if(cij < bestCost)
+		    {
+		    	bestShipment = temp;
+		    	bestCost = cij;
+		    }
+	    //}
+	    //else
+	    //{
+	    	
+	    //}
+	    
+	    if (isDiagnostic) {
+	      System.out.println("  " + distance);
+	    }
+	    temp = (VRPTWShipment) temp.getNext();
+  }
+  
+  return bestShipment; //stub
+}
+
+//The WhoAmI methods gives the id of the assigned object
+//It is a static method so that it can be accessed without creating an object
+public static String WhoAmI() {
+ return("Selection Type: Closest euclidean distance and best time window to last shipment");
+}
+
+}
+
+//Select the shipment with the shortest distance to the depot
+class ClosestEuclideanDistToDepot
+extends VRPTWShipmentLinkedList {
+	  public VRPTWShipment getSelectShipment(VRPTWDepotLinkedList currDepotLL,
+			  VRPTWDepot currDepot,
+                                     VRPTWShipmentLinkedList currShipLL,
+                                     VRPTWShipment currShip) {
+  //currDepotLL is the depot linked list of the problem
+  //currDepot is the depot under consideration
+  //currShipLL is the set of avaialble shipments
+  boolean isDiagnostic = false;
+  //VRPShipment temp = (VRPShipment) getHead(); //point to the first shipment
+  VRPTWShipment temp = (VRPTWShipment) currShipLL.getVRPTWHead().getNext(); //point to the first shipment
+  VRPTWShipment foundShipment = null; //the shipment found with the criteria
+  //double angle;
+  //double foundAngle = 360; //initial value
+  double distance;
+  double foundDistance = 200; //initial distance
+  double depotX, depotY;
+
+  //Get the X and Y coordinate of the depot
+  depotX = currDepot.getXCoord();
+  depotY = currDepot.getYCoord();
+
+  while (temp != currShipLL.getVRPTWTail()) {
+    if (isDiagnostic) {
+      System.out.print("Shipment " + temp.getIndex() + " ");
+
+      if ( ( (temp.getXCoord() - depotX) >= 0) &&
+          ( (temp.getYCoord() - depotX) >= 0)) {
+        System.out.print("Quadrant I ");
+      }
+      else if ( ( (temp.getXCoord() - depotX) <= 0) &&
+               ( (temp.getYCoord() - depotY) >= 0)) {
+        System.out.print("Quadrant II ");
+      }
+      else if ( ( (temp.getXCoord()) <= (0 - depotX)) &&
+               ( (temp.getYCoord() - depotY) <= 0)) {
+        System.out.print("Quadrant III ");
+      }
+      else if ( ( (temp.getXCoord() - depotX) >= 0) &&
+               ( (temp.getYCoord() - depotY) <= 0)) {
+        System.out.print("Quadrant VI ");
+      }
+      else {
+        System.out.print("No Quadrant");
+      }
+    }
+
+    //if the shipment is assigned, skip it
+    if (temp.getIsAssigned()) {
+      if (isDiagnostic) {
+        System.out.println("has been assigned");
+      }
+
+      temp = (VRPTWShipment) temp.getNext();
+
+      continue;
+    }
+/** @todo Associate the quadrant with the distance to get the correct shipment.
+     * Set up another insertion that takes the smallest angle and the smallest distance */
+    distance = calcDist(depotX, temp.getXCoord(), depotY, temp.getYCoord());
+
+    if (isDiagnostic) {
+      System.out.println("  " + distance);
+    }
+
+    //check if this shipment should be tracked
+    if (foundShipment == null) { //this is the first shipment being checked
+      foundShipment = temp;
+      foundDistance = distance;
+    }
+    else {
+      if (distance < foundDistance) { //found an angle that is less
+        foundShipment = temp;
+        foundDistance = distance;
+      }
+    }
+    temp = (VRPTWShipment) temp.getNext();
+  }
+  return foundShipment; //stub
+}
+
+//The WhoAmI methods gives the id of the assigned object
+//It is a static method so that it can be accessed without creating an object
+public static String WhoAmI() {
+ return("Selection Type: Closest euclidean distance to depot");
+}
+
+}
+
+
+//Select the shipment with the smallest polar coordinate angle to the depot
+class SmallestPolarAngleToDepot
+    extends VRPTWShipmentLinkedList {
+  public VRPTWShipment getSelectShipment(VRPTWDepotLinkedList currDepotLL,
+                                       VRPTWDepot currDepot,
+                                       VRPTWShipmentLinkedList currShipLL,
+                                       VRPTWShipment currShip) {
+    //currDepotLL is the depot linked list of the problem
+    //currDepot is the depot under consideration
+    //currShipLL is the set of avaialble shipments
+    boolean isDiagnostic = false;
+    //VRPShipment temp = (VRPShipment) getHead(); //point to the first shipment
+    VRPTWShipment temp = (VRPTWShipment) currShipLL.getVRPTWHead().getNext(); //point to the first shipment
+   
+    VRPTWShipment foundShipment = null; //the shipment found with the criteria
+    double angle;
+    double foundAngle = 360; //initial value
+    //double distance;
+    //double foundDistance = 200; //initial distance
+    double depotX, depotY;
+    int type = 2;
+
+    //Get the X and Y coordinate of the depot
+    depotX = currDepot.getXCoord();
+    depotY = currDepot.getYCoord();
+
+    while (temp != currShipLL.getVRPTWTail()) {
+
+      if (isDiagnostic) {
+    	  System.out.println("Temp is "+temp);
+    	  System.out.println("Tail is "+getTail());
+    	  System.out.print("Shipment " + temp.getIndex() + " ");
+
+    	  if ( ( (temp.getXCoord() - depotX) >= 0) &&
+    			  ( (temp.getYCoord() - depotX) >= 0)) {
+    		  System.out.print("Quadrant I ");
+    	  }
+    	  else if ( ( (temp.getXCoord() - depotX) <= 0) &&
+    			  ( (temp.getYCoord() - depotY) >= 0)) {
+    		  System.out.print("Quadrant II ");
+    	  }
+    	  else if ( ( (temp.getXCoord()) <= (0 - depotX)) &&
+    			  ( (temp.getYCoord() - depotY) <= 0)) {
+    		  System.out.print("Quadrant III ");
+    	  }
+    	  else if ( ( (temp.getXCoord() - depotX) >= 0) &&
+    			  ( (temp.getYCoord() - depotY) <= 0)) {
+    		  System.out.print("Quadrant VI ");
+    	  }
+    	  else {
+    		  System.out.print("No Quadrant");
+    	  }
+      }
+
+      //if the shipment is assigned, skip it
+	      if (temp.getIsAssigned()) {
+    	  if (isDiagnostic) {
+    		  System.out.println("has been assigned");
+    	  }
+
+    	  temp = (VRPTWShipment) temp.getNext();
+
+    	  continue;
+      }
+
+      angle = calcPolarAngle(depotX, depotX, temp.getXCoord(),
+    		  temp.getYCoord());
+
+      if (isDiagnostic) {
+    	  System.out.println("  " + angle);
+      }
+
+      //check if this shipment should be tracked
+      if (foundShipment == null) { //this is the first shipment being checked
+    	  foundShipment = temp;
+    	  foundAngle = angle;
+      }
+      else {
+    	  if (angle < foundAngle) { //found an angle that is less
+    		  foundShipment = temp;
+    		  foundAngle = angle;
+    	  }
+      }
+      temp =  (VRPTWShipment) temp.getNext();
+    }
+    return foundShipment; //stub
+  }
+
+  //The WhoAmI methods gives the id of the assigned object
+  //It is a static method so that it can be accessed without creating an object
+ public static String WhoAmI() {
+   return("Selection Type: Smallest polar angle to the depot");
+ }
+}
+
+//Select the shipment with the smallest polar coordinate angle and the
+//shortest distance to the depot
+class SmallestPolarAngleShortestDistToDepot
+    extends VRPTWShipmentLinkedList {
+  public VRPTWShipment getSelectShipment(VRPTWDepotLinkedList currDepotLL,
+                                       VRPTWDepot currDepot,
+                                       VRPTWShipmentLinkedList currShipLL,
+                                       VRPTWShipment currShip) {
+    //currDepotLL is the depot linked list of the problem
+    //currDepot is the depot under consideration
+    //currShipLL is the set of avaialble shipments
+    boolean isDiagnostic = false;
+    //VRPShipment temp = (VRPShipment) getHead(); //point to the first shipment
+    VRPTWShipment temp = (VRPTWShipment)currShipLL.getVRPTWHead().getNext(); //point to the first shipment
+    VRPTWShipment foundShipment = null; //the shipment found with the criteria
+    double angle;
+    double foundAngle = 360; //initial value
+    double distance;
+    double foundDistance = 200; //initial distance
+    double depotX, depotY;
+    int type = 2;
+
+    //Get the X and Y coordinate of the depot
+    depotX = currDepot.getXCoord();
+    depotY = currDepot.getYCoord();
+
+    while (temp != currShipLL.getVRPTWTail()) {
+      if (isDiagnostic) {
+        System.out.print("Shipment " + temp.getIndex() + " ");
+
+        if ( ( (temp.getXCoord() - depotX) >= 0) &&
+            ( (temp.getYCoord() - depotX) >= 0)) {
+          System.out.print("Quadrant I ");
+        }
+        else if ( ( (temp.getXCoord() - depotX) <= 0) &&
+                 ( (temp.getYCoord() - depotY) >= 0)) {
+          System.out.print("Quadrant II ");
+        }
+        else if ( ( (temp.getXCoord()) <= (0 - depotX)) &&
+                 ( (temp.getYCoord() - depotY) <= 0)) {
+          System.out.print("Quadrant III ");
+        }
+        else if ( ( (temp.getXCoord() - depotX) >= 0) &&
+                 ( (temp.getYCoord() - depotY) <= 0)) {
+          System.out.print("Quadrant VI ");
+        }
+        else {
+          System.out.print("No Quadrant");
+        }
+      }
+
+      //if the shipment is assigned, skip it
+      if (temp.getIsAssigned()) {
+        if (isDiagnostic) {
+          System.out.println("has been assigned");
+        }
+
+        temp = (VRPTWShipment) temp.getNext();
+
+        continue;
+      }
+
+      distance = calcDist(depotX, temp.getXCoord(), depotY, temp.getYCoord());
+      angle = calcPolarAngle(depotX, depotX, temp.getXCoord(),
+                             temp.getYCoord());
+
+      if (isDiagnostic) {
+        System.out.println("  " + angle);
+      }
+
+      //check if this shipment should be tracked
+      if (foundShipment == null) { //this is the first shipment being checked
+        foundShipment = temp;
+        foundAngle = angle;
+        foundDistance = distance;
+      }
+      else {
+        //if angle and disnace are smaller than what had been found
+        //if (angle <= foundAngle && distance <= foundDistance) {
+        if (angle+ distance  <= foundAngle + foundDistance) {
+        //if ((angle*.90)+ (distance * 0.1)  <= (foundAngle*0.9) + (foundDistance*0.1)) {
+          foundShipment = temp;
+          foundAngle = angle;
+           foundDistance = distance;
+        }
+      }
+      temp = (VRPTWShipment) temp.getNext();
+    }
+    return foundShipment; //stub
+  }
+
+  //The WhoAmI methods gives the id of the assigned object
+  //It is a static method so that it can be accessed without creating an object
+ public static String WhoAmI() {
+   return("Selection Type: Smallest polar angle to the depot");
+ }
+
+}
+

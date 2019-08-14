@@ -1,0 +1,116 @@
+package edu.sru.thangiah.zeus.vrptw;
+
+import edu.sru.thangiah.zeus.core.Depot;
+//import the parent class
+import edu.sru.thangiah.zeus.core.DepotLinkedList;
+
+/**
+ *
+ * <p>Title:</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2005</p>
+ * <p>Company: </p>
+ * @author Sam R. Thangiah
+ * @version 2.0
+ */
+
+public class VRPTWDepotLinkedList
+    extends DepotLinkedList
+    implements java.io.Serializable, java.lang.Cloneable {
+
+  public VRPTWDepotLinkedList() {
+	//Housekeeping for the linked list
+	setHead(new VRPTWDepot()); //header node for head
+	setTail(new VRPTWDepot()); //tail node for tail
+	linkHeadTail();			  //point head and tail to each other
+			
+	//Assign the attributes	
+    setAttributes(new VRPTWAttributes());
+  }
+  
+  /**
+   * Attempts to add the depot to the linked list
+   * @param theDepot the depot to add
+   * @return true if depot was added
+   */
+  public boolean insertDepotLast(VRPTWDepot theDepot)
+  {
+	  return insertDepotLast(theDepot);
+  }
+
+ 
+  /**
+   * Attempts to insert the shipment into the depot linked list. Will loop
+   * through the available depots until a depot is found that can accommodate
+   * the shipment
+   * @param theShipment the shipment to route
+   * @return true if shipment serviced, false if not.
+   */
+  public boolean insertShipment(VRPTWShipment theShipment) {
+    boolean status = false;
+
+    VRPTWDepot depot = (VRPTWDepot)super.getHead().getNext();
+    VRPTWTruckLinkedList truckLL = (VRPTWTruckLinkedList)depot.getMainTrucks();
+
+    while (depot != this.getTail()) {
+      //Get truck to insert the shipment
+      truckLL = (VRPTWTruckLinkedList)depot.getMainTrucks();
+      //status = depot.getMainTrucks().insertShipment(theShipment);
+      status = truckLL.insertShipment(theShipment);
+
+      if (status) {
+        break;
+      }
+      depot = (VRPTWDepot) depot.getNext();
+    }
+
+    return status;
+  }
+
+  /**
+ * Returns the first depot in the linked list
+ * @return first depot
+ */
+
+public VRPTWDepot getVRPHead() {
+ return (VRPTWDepot) getHead();
+}
+
+
+  /**
+   * Returns an exact copy of the depot linked list
+   * @return Object depot linked list copy
+   */
+  public Object clone() {
+    VRPTWDepotLinkedList clonedDepotLinkedList = new VRPTWDepotLinkedList();
+
+    clonedDepotLinkedList.setAttributes((VRPTWAttributes)this.getAttributes().clone());
+    clonedDepotLinkedList.setHead((VRPTWDepot)this.getHead().clone());
+
+    //must establish the links at this level to avoid recursing out of control
+    clonedDepotLinkedList.getHead().setPrev(null);
+
+    if (this.getHead() != this.getTail()) {
+      VRPTWDepot currentDepot = (VRPTWDepot) clonedDepotLinkedList.getHead();
+      VRPTWDepot nextDepot = (VRPTWDepot)this.getHead().getNext();
+
+      while (nextDepot != null) {
+        currentDepot.setNext( (VRPTWDepot) nextDepot.clone()); //create the next depot
+        currentDepot.getNext().setPrev(currentDepot); //set the next depot's prev
+        currentDepot = (VRPTWDepot) currentDepot.getNext();
+        nextDepot = (VRPTWDepot) nextDepot.getNext();
+
+        //once next is null, we have found the tail of the list
+        if (nextDepot == null) {
+          clonedDepotLinkedList.setTail(currentDepot);
+          currentDepot.setNext(null);
+        }
+
+      }
+    }
+    else { //only 1 depot
+      clonedDepotLinkedList.setTail(clonedDepotLinkedList.getHead());
+    }
+    return clonedDepotLinkedList;
+  }
+}

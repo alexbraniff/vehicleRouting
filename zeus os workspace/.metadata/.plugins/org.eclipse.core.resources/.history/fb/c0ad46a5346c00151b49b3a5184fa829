@@ -1,0 +1,153 @@
+package edu.sru.thangiah.zeus.vrptw;
+
+import java.io.*;
+import java.util.*;
+
+import edu.sru.thangiah.zeus.core.*;
+import edu.sru.thangiah.zeus.excelimport.*;
+import edu.sru.thangiah.zeus.vrptw.vrptwqualityassurance.*;
+import edu.sru.thangiah.zeus.gui.*;
+import edu.sru.thangiah.zeus.localopts.OptInfo;
+import edu.sru.thangiah.zeus.localopts.interopts.Exchange11;
+import edu.sru.thangiah.zeus.localopts.interopts.FirstBestInterSearch;
+import edu.sru.thangiah.zeus.localopts.interopts.FirstFirstInterSearch;
+import edu.sru.thangiah.zeus.metaheuristics.simulatedannealing.SimulatedAnnealing;
+
+
+/**
+ *
+ * <p>Title:</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2005</p>
+ * <p>Company: </p>
+ * @author Sam R. Thangiah
+ * @version 2.0
+ */
+
+public class VRPTW {
+	
+	private int m, // number of vehicles
+				n, // number of customers
+				d, // number of depots
+				Q, // maximum capacity of vehicle
+				D; // maximum duration of route
+
+	private long startTime, endTime;
+	private Vector mainOpts;
+	private Vector optInformation;
+	private VRPTWDepotLinkedList mainDepots;
+	private VRPTWShipmentLinkedList mainShipments;
+	private VRPTWQualityAssurance vrptwQA;
+	
+  //constructor for the class
+  public VRPTW(String dataFile)
+  {
+	  ProblemInfo.truckTypes = new Vector();
+	  VRPTWTruckType onlyTruckType =  new VRPTWTruckType(0, Q, D);
+	  ProblemInfo.truckTypes.add(onlyTruckType);
+	  
+	  boolean isDiagnostic = true;
+	  Shipment tempShip;
+	  Depot thisDepot;
+	  int type;
+	  int depotNo;
+	  int countAssignLoop;
+	  boolean status;
+	  String outputFileName;
+	  
+	  mainShipments = null;
+	  mainDepots = null;
+	  
+	  System.out.println("Attempt to read: " + dataFile);
+	  readDataFromFile(dataFile);
+	  
+	  if(this.mainShipments.getVRPHead() == null)
+	  {
+		  Settings.printDebug(Settings.ERROR, "VRPTW: Shipment Linked List is Empty");
+		  return;
+	  }
+	  
+	  
+  } 
+
+  /**
+   * Creates the initial solution for the problem
+   */
+  public void createInitialRoutes()
+  {
+	  
+  }
+  
+  //read in the data from the requested file in token format
+  public int readDataFromFile(String VRPTWFileName) {
+	  // read in the MDVRP data from the listed file and load the information
+	  // into the availShipments linked list
+	  DataFields problemData;
+	  try
+	  { // Try to read in the datafile
+		  // VRPTW is Problem Type 3
+		  ExcelImport problemFile = new ExcelImport(VRPTWFileName, 3);
+		  problemData = problemFile.getData();
+		  this.n = problemData.getNumNodes();
+		  for(int i = 0; i < this.n; i++)
+		  {
+			  this.mainShipments.insertShipment(i, problemData.getNodeX(i), problemData.getNodeY(i),
+												problemData.getNodeDemand(i), problemData.getNodeEarly(i),
+												problemData.getNodeLate(i), problemData.getNodeTime(i));
+		  }
+		  this.d = problemData.getNumDepots();
+		  if(d > 1)
+		  {
+			  // This is a MDVRPTW problem not VRPTW
+			  return 0;
+		  }
+		  for(int i = 0; i < d; i++)
+		  {
+			  this.mainDepots.insertDepotLast(new VRPTWDepot(i, problemData.getDepotX(i), problemData.getDepotY(i)));
+		  }
+	  }
+	  catch(IOException e)
+	  {
+		  System.out.println("Error importing excel file");
+	  }
+	  
+	  return 1;
+  }
+  
+  /**
+   * Print  out the data to the console
+   */
+
+  public void printDataToConsole() {
+    
+  }
+
+  /**
+   * Write out the data file that was read in
+   * @param file name of file used for generating the data
+   */
+
+  public void writeDataFile(String file)
+  {
+	  
+  }
+
+  /**
+   * Will write a long detailed solution for the problem
+   * @param file name of the file to write to
+   */
+  public void writeLongSolution(String file)
+  {
+	  
+  }
+
+  /**
+   * Will write a short solution for the problem
+   * @param file name of the file to write to
+   */
+  public void writeShortSolution(String file)
+  {
+	  
+  }
+
+} //End of VRPTW file

@@ -1,0 +1,169 @@
+package edu.sru.thangiah.zeus.vrptw;
+
+import edu.sru.thangiah.zeus.core.ProblemInfo;
+
+public class VRPTWProblemInfo extends ProblemInfo
+{
+	private int numDepots;
+	private int numTrucks;
+	private int numShipments;
+	private int maxCapacity;
+	private int maxDuration;
+	
+	private VRPTWDepotLinkedList mainDepots;
+	
+	private VRPTWTruckType truckType;
+	
+	private int heuristicMode;
+
+	private VRPTWShipmentLinkedList selectionHeuristic;
+	private VRPTWNodesLinkedList insertionHeuristic;
+	
+	private VRPTWNodes nearestNeighborLastNode;
+	
+	public VRPTWProblemInfo()
+	{
+		super.probType = 1; // VRPTW
+		
+		mainDepots = null;
+		
+		numDepots = 0;
+		numTrucks = 0;
+		numShipments = 0;
+		maxCapacity = 0;
+		maxDuration = 0;
+		truckType = null;
+		selectionHeuristic = null;
+		insertionHeuristic = null;
+		nearestNeighborLastNode = null;
+		
+		this.totalTime = null;
+	}
+	
+	public int getNumDepots()
+	{
+		return this.numDepots;
+	}
+	
+	public int getNumTrucks()
+	{
+		return this.numTrucks;
+	}
+	
+	public int getNumShipments()
+	{
+		return this.numShipments;
+	}
+	
+	public int getMaxCapacity()
+	{
+		return this.maxCapacity;
+	}
+	
+	public int getMaxDuration()
+	{
+		return this.maxDuration;
+	}
+	
+	public int getHeuristicMode()
+	{
+		return this.heuristicMode;
+	}
+	
+	public int getProblemType()
+	{
+		return super.probType;
+	}
+	
+	public VRPTWDepotLinkedList getMainDepots()
+	{
+		return this.mainDepots;
+	}
+	
+	public VRPTWTruckType getTruckType()
+	{
+		return this.truckType;
+	}
+	
+	public VRPTWShipmentLinkedList getSelectionHeuristic()
+	{
+		return this.selectionHeuristic;
+	}
+	
+	public VRPTWNodesLinkedList getInsertionHeuristic()
+	{
+		return this.insertionHeuristic;
+	}
+	
+	public VRPTWNodes getNNLastNode()
+	{
+		return this.nearestNeighborLastNode;
+	}
+	
+	public double getTotalTime()
+	{
+		return this.totalTime;
+	}
+	
+
+	
+	public void setNumDepots(int d)
+	{
+		this.numDepots = d;
+	}
+	
+	public void setNumTrucks(int t)
+	{
+		this.numTrucks = t;
+	}
+	
+	public void setNumShipments(int s)
+	{
+		this.numShipments = s;
+	}
+	
+	public void setMaxCapacity(int Q)
+	{
+		this.maxCapacity = Q;
+	}
+	
+	public void setMaxDuration(int D)
+	{
+		this.maxDuration = D;
+	}
+	
+	public void setTruckType(VRPTWTruckType tt)
+	{
+		this.truckType = tt;
+	}
+	
+	public void setHeuristicMode(int hm)
+	{
+		this.heuristicMode = hm;
+	}
+	
+	public void setSelectionHeuristic(VRPTWShipmentLinkedList sh)
+	{
+		this.selectionHeuristic = sh;
+	}
+	
+	public void setInsertionHeuristic(VRPTWNodesLinkedList ih)
+	{
+		this.insertionHeuristic = ih;
+	}
+	
+	public void setNNLastNode(VRPTWNodes nnln)
+	{
+		this.nearestNeighborLastNode = nnln;
+	}
+	
+	public void setMainDepots(VRPTWDepotLinkedList md)
+	{
+		this.mainDepots = md;
+	}
+	
+	public void setTotalTime(double t)
+	{
+		this.totalTime = t;
+	}
+}

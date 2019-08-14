@@ -1,0 +1,131 @@
+package edu.sru.thangiah.zeus.vrptw;
+
+import java.io.*;
+import java.util.*;
+
+import edu.sru.thangiah.zeus.core.*;
+import edu.sru.thangiah.zeus.vrp.vrpqualityassurance.*;
+import edu.sru.thangiah.zeus.gui.*;
+import edu.sru.thangiah.zeus.localopts.OptInfo;
+import edu.sru.thangiah.zeus.localopts.interopts.Exchange11;
+import edu.sru.thangiah.zeus.localopts.interopts.FirstBestInterSearch;
+import edu.sru.thangiah.zeus.localopts.interopts.FirstFirstInterSearch;
+import edu.sru.thangiah.zeus.metaheuristics.simulatedannealing.SimulatedAnnealing;
+
+
+/**
+ *
+ * <p>Title:</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2005</p>
+ * <p>Company: </p>
+ * @author Sam R. Thangiah
+ * @version 2.0
+ */
+
+public class VRPTW {
+
+  //constructor for the class
+  public VRPTW(String dataFile)
+  {
+	  
+  } 
+
+  /**
+   * Creates the initial solution for the problem
+   */
+  public void createInitialRoutes()
+  {
+	  
+  }
+  
+  // State information for reading in a file
+  private enum STATE
+  {
+      ERROR, START, PROBLEM_INFO, TRUCK_TYPE_INFO, DEPOT_INFO, TRUCK_INFO, CUSTOMER_INFO, DONE
+  }
+  // Variables for file reading
+  private FileInputStream fis;
+  private InputStreamReader isr;
+  private BufferedReader br;
+  
+  //read in the data from the requested file in token format
+  public int readDataFromFile(String VRPFileName) {
+    // read in the MDVRP data from the listed file and load the information
+    // into the availShipments linked list
+
+    //type = 0 (MDVRP)
+    //     = 1 (PTSP)
+    //     = 2 (PVRP)
+	//     = 3 (VRPTW)
+	//     = 4 (MDVRPTW)
+	  
+	char ch = 'x';
+	int line = 0, // line index for file being read in
+		index = 0, // column index for file bring read
+		type = 0, // type of problem
+		lastTruckType = 0, // ID# of last truck type read
+		numTruckTypes = 0, // number of truck types to be read in
+		maxCapacity = 0, // maximum quantity last truck type can hold; 0 == unlimited
+		maxDistance = 0, // distance restriction; 0 == unlimited
+		lastDepot = 0, // last depot read
+		numDepots = 0, // number of depots to be read in
+		xD = 0, // last depot x val
+		yD = 0, // last depot y val
+		depotOpenHour = 0, // '08' depot opens at 8am trucks start their routes
+		depotCloseHour = 0, // '22' depot closes at 10pm trucks must be back
+		maxTravelTime = 0, // Depot imposed time restriction; 0 == unlimited
+		lastTruck = 0, // ID# of last truck read for last depot
+		numTrucks = 0, // number of trucks in last depot
+		truckType = 0, // type of truck currently being read
+		lastCustomer = 0, // ID# of last customer read
+		numCustomers = 0, // number of customers to be read in
+		xC = 0, // last customer x val
+		yC = 0, // last customer y val
+		demand = 0, // how much does last customer want from the depot
+		twStartHour = 0, // '18'
+		twEndHour = 0; // '18'
+  }
+  
+  /**
+   * Print  out the data to the console
+   */
+
+  public void printDataToConsole() {
+    try {
+      mainShipments.printVRPShipmentsToConsole();
+    }
+    catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  /**
+   * Write out the data file that was read in
+   * @param file name of file used for generating the data
+   */
+
+  public void writeDataFile(String file)
+  {
+	  
+  }
+
+  /**
+   * Will write a long detailed solution for the problem
+   * @param file name of the file to write to
+   */
+  public void writeLongSolution(String file)
+  {
+	  
+  }
+
+  /**
+   * Will write a short solution for the problem
+   * @param file name of the file to write to
+   */
+  public void writeShortSolution(String file)
+  {
+	  
+  }
+
+} //End of VRPTW file

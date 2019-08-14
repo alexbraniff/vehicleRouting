@@ -1,0 +1,557 @@
+package edu.sru.thangiah.zeus.vrptw;
+
+import java.io.*;
+import java.util.*;
+
+import edu.sru.thangiah.zeus.core.*;
+import edu.sru.thangiah.zeus.vrp.vrpqualityassurance.*;
+import edu.sru.thangiah.zeus.gui.*;
+import edu.sru.thangiah.zeus.localopts.OptInfo;
+import edu.sru.thangiah.zeus.localopts.interopts.Exchange11;
+import edu.sru.thangiah.zeus.localopts.interopts.FirstBestInterSearch;
+import edu.sru.thangiah.zeus.localopts.interopts.FirstFirstInterSearch;
+import edu.sru.thangiah.zeus.metaheuristics.simulatedannealing.SimulatedAnnealing;
+
+
+/**
+ *
+ * <p>Title:</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2005</p>
+ * <p>Company: </p>
+ * @author Sam R. Thangiah
+ * @version 2.0
+ */
+
+public class VRPTW {
+
+  //constructor for the class
+  public VRPTW(String dataFile)
+  {
+	  
+  } 
+
+  /**
+   * Creates the initial solution for the problem
+   */
+  public void createInitialRoutes()
+  {
+	  
+  }
+  
+  // State information for reading in a file
+  private enum STATE
+  {
+      ERROR, START, PROBLEM_INFO, TRUCK_TYPE_INFO, DEPOT_INFO, TRUCK_INFO, CUSTOMER_INFO, DONE
+  }
+  // Variables for file reading
+  private FileInputStream fis;
+  private InputStreamReader isr;
+  private BufferedReader br;
+  
+  //read in the data from the requested file in token format
+  public int readDataFromFile(String VRPFileName) {
+    // read in the MDVRP data from the listed file and load the information
+    // into the availShipments linked list
+
+    //type = 0 (MDVRP)
+    //     = 1 (PTSP)
+    //     = 2 (PVRP)
+	//     = 3 (VRPTW)
+	//     = 4 (MDVRPTW)
+	  
+	char ch = 'x';
+	int line = 0, // line index for file being read in
+		index = 0, // column index for file bring read
+		type = 0, // type of problem
+		lastTruckType = 0, // ID# of last truck type read
+		numTruckTypes = 0, // number of truck types to be read in
+		maxCapacity = 0, // maximum quantity last truck type can hold; 0 == unlimited
+		maxDistance = 0, // distance restriction; 0 == unlimited
+		lastDepot = 0, // last depot read
+		numDepots = 0, // number of depots to be read in
+		xD = 0, // last depot x val
+		yD = 0, // last depot y val
+		depotOpenHour = 0, // '08'
+		depotOpenMinute = 0, // '00' opens at 8:00am; trucks roll out
+		depotCloseHour = 0, // '22'
+		depotCloseMinute = 0, // '00' closes at 10:00pm; trucks must be back
+		maxTravelTime = 0, // Depot imposed time restriction; 0 == unlimited
+		lastTruck = 0, // ID# of last truck read for last depot
+		numTrucks = 0, // number of trucks in last depot
+		truckType = 0, // type of truck currently being read
+		lastCustomer = 0, // ID# of last customer read
+		numCustomers = 0, // number of customers to be read in
+		xC = 0, // last customer x val
+		yC = 0, // last customer y val
+		demand = 0, // how much does last customer want from the depot
+		twStartMonth = 0, // '09
+		twStartDay = 0, // '20'
+		twStartHour = 0, // '18'
+		twStartMinute = 0, // '00' delivery time window starts 09/20 at 6:00pm
+		twEndMonth = 0, // '09
+		twEndDay = 0, // '20'
+		twEndHour = 0, // '18'
+		twEndMinute = 0; // '00' delivery time window starts 09/20 at 6:00pm
+    
+    //This section will be used to hold information from the data file
+    String readLn;
+    StringTokenizer st;
+    
+    int error_id = 0;
+    // dont need a file open error. return 0 instead
+    // 1 = problem with problem info line
+    // 2 = problem with one or more tuck type lines
+    // 3 = problem with values of a truck type line
+    // 4 = problem with a depot info line
+    // 5 = problem with values of a depot line
+    // 6 = problem with a truck line
+    // 7 = problem with value of from a truck line
+    // 8 = problem with a customer line
+    // 9 = problem with the values of a customer line
+	
+	STATE state = STATE.START;
+	
+	while(state != STATE.DONE && state != STATE.ERROR)
+	{
+		switch(state)
+		{
+		case START:
+			// Init file read
+		    try
+		    {
+		        fis = new FileInputStream(VRPFileName);
+		        isr = new InputStreamReader(fis);
+		        br = new BufferedReader(isr);
+		    }
+		    catch (Exception e)
+		    {
+		    	System.out.println("File is not present");
+		        return 0;
+		    }
+		    // File is ready to be read
+		    line = 0;
+		    index = 0;
+		    // First line should always be problem info
+		    // Update State
+		    state = STATE.PROBLEM_INFO;
+			break;
+		case PROBLEM_INFO:
+			line += 1;
+			// Read in the problem info
+			try
+			{
+			readLn = br.readLine();
+			// print out the line that was read
+			System.out.println("This line is:" + readLn);
+
+			st = new StringTokenizer(readLn);
+			while(st.hasMoreTokens())
+		    { // there are more tokens that need to be processed
+				if(state == STATE.ERROR)
+				{
+					break;
+				}
+				switch (index)
+				{
+				  case 0:
+				    type = Integer.parseInt(st.nextToken());
+				    System.out.println("Problem Type: " + type);
+				    
+				    // Check that type is a good value
+				    if(type < 0 || type > 3)
+				    { // Hard-coded max problem types; maybe consider changing later
+				    	state = STATE.ERROR;
+				    	error_id = 1;
+				    }
+				    break;
+				  case 1:
+				    numTruckTypes = Integer.parseInt(st.nextToken());
+				    System.out.println("# Truck Types: " + numTruckTypes);
+				    
+				    // Check that numTruckTypes is a good value
+				    if(numTruckTypes <= 0)
+				    {
+				    	state = STATE.ERROR;
+				    	error_id = 1;
+				    }
+				    break;
+				  case 2:
+				    numDepots = Integer.parseInt(st.nextToken());
+				    System.out.println("# Depots: " + numDepots);
+				    
+				    // Check that numDepots is a good value
+				    if(numDepots <= 0)
+				    {
+				    	state = STATE.ERROR;
+				    	error_id = 1;
+				    }
+				    break;
+				  case 3:
+				    numCustomers = Integer.parseInt(st.nextToken());
+				    System.out.println("# Customers: " + numCustomers);
+				    
+				    // Check that numCustomers is a good value
+				    if(numCustomers <= 0)
+				    {
+				    	state = STATE.ERROR;
+				    	error_id = 1;
+				    }
+				    break;
+				  default:
+					break;
+				} // end problem info switch
+				index += 1;
+		      } // end problem info while
+		      
+		      /** @todo  Update problem info */
+			
+
+
+			    // Put the problem information into the ProblemInfo class
+			    // set the problem info for the problem
+			    ProblemInfo.numDepots = numDepots; // Set the number of depots
+			    ProblemInfo.fileName = VRPFileName; //name of the file being read in
+			    ProblemInfo.probType = type; //problem type
+			    //ProblemInfo.noOfVehs = m; //number of vehicles
+			    ProblemInfo.noOfShips = numCustomers; //number of shipments/customers
+			    ProblemInfo.noOfDays = t; //number of days (horizon) or number of depots for MDVRP
+		      
+		    }
+		    catch (Exception e)
+		    {
+		      System.out.println("Line could not be read");
+		    }
+		    if(type >= 0 && numTruckTypes > 0 && numDepots > 0 && numCustomers > 0)
+		    {
+		    	// Successfully read problem info
+		    	// Next come the truck types. must be one or more
+		    	// Update state
+		    	state = STATE.TRUCK_TYPE_INFO;
+		    }
+		    else
+		    {
+		    	// one or more of the problem info data were invalid
+		    	state = STATE.ERROR;
+		    	error_id = 1;
+		    }
+			break; // break from problem info
+		case TRUCK_TYPE_INFO:
+			for(lastTruckType = 1; lastTruckType <= numTruckTypes; lastTruckType++)
+			{
+				line += 1;
+				if(state == STATE.ERROR)
+				{
+					break;
+				}
+				index = 0;
+				// Read in a truck type
+			    try
+			    {
+			      readLn = br.readLine();
+			      // print out the line that was read
+			      System.out.println("This line is:" + readLn);
+
+			      st = new StringTokenizer(readLn);
+			      while(st.hasMoreTokens())
+			      { //while there are more tokens
+			        switch (index)
+			        {
+			          case 0:
+			            maxCapacity = Integer.parseInt(st.nextToken());
+			            break;
+			          case 1:
+			        	maxDistance = Integer.parseInt(st.nextToken());
+			        	break;
+			          default:
+			        	// Should not have any more characters
+			        	state = STATE.ERROR;
+			        	error_id = 2;
+						System.out.println("ERROR " + error_id + " on line " + line);
+						break;
+			        } // end problem info switch
+			        index += 1;
+			      } // end problem info while
+			      
+			      /** @todo  Add these truck types */
+			      
+			    }
+			    catch (Exception e)
+			    {
+			      System.out.println("Line could not be read");
+			    }
+			}
+			if(maxCapacity < 0 || maxDistance < 0)
+			{
+				state = STATE.ERROR;
+				error_id = 3;
+				System.out.println("ERROR " + error_id + " on line " + line);
+				break;
+			}
+			if(state == STATE.ERROR)
+			{
+				break;
+			}
+			// Should have good truck type data
+			
+			/** @todo add truck types to problem */
+			
+			// Next line should be info for first depot
+			// Update state
+			state = STATE.DEPOT_INFO;
+			
+			break; // break from truck type info
+		case DEPOT_INFO:
+			line += 1;
+			lastDepot += 1;
+			index = 0;
+			// Read in a depot info line
+		    try
+		    {
+		      readLn = br.readLine();
+		      // print out the line that was read
+		      System.out.println("This line is:" + readLn);
+
+		      st = new StringTokenizer(readLn);
+		      while(st.hasMoreTokens())
+		      { //while there are more tokens
+		        switch (index)
+		        {
+		          case 0:
+		            xD = Integer.parseInt(st.nextToken());
+		            break;
+		          case 1:
+		        	yD = Integer.parseInt(st.nextToken());
+		        	break;
+		          case 2:
+		        	numTrucks = Integer.parseInt(st.nextToken());
+		        	break;
+		          case 3:
+		        	maxTravelTime = Integer.parseInt(st.nextToken());
+		        	break;
+		          default:
+		        	// Should not have any more characters
+		        	state = STATE.ERROR;
+		        	error_id = 4;
+					System.out.println("ERROR " + error_id + " on line " + line);
+					break;
+		        } // end problem info switch
+		        index += 1;
+		      } // end problem info while
+		      
+		      /** @todo  Add this depot info */
+		      
+		    }
+		    catch (Exception e)
+		    {
+		      System.out.println("Line could not be read");
+		    }
+		    if(numTrucks < 0 || maxTravelTime < 0)
+		    {
+		    	state = STATE.ERROR;
+		    	error_id = 5;
+				System.out.println("ERROR " + error_id + " on line " + line);
+				break;
+		    }
+		    // Should have good depot info
+		    // Next is truck info for this depot
+		    // Update state
+		    state = STATE.TRUCK_INFO;
+			break; // break from depot info
+		case TRUCK_INFO:
+			for(lastTruck = 1; lastTruck <= numTrucks; lastTruck++)
+			{
+				line += 1;
+				if(state == STATE.ERROR)
+				{
+					break;
+				}
+				index = 0;
+				// Read in a truck
+			    try
+			    {
+			      readLn = br.readLine();
+			      // print out the line that was read
+			      System.out.println("This line is:" + readLn);
+
+			      st = new StringTokenizer(readLn);
+			      while(st.hasMoreTokens())
+			      { //while there are more tokens
+			        switch (index)
+			        {
+			          case 0:
+			            truckType = Integer.parseInt(st.nextToken());
+			            break;
+			          default:
+			        	// Should not have any more characters
+			        	state = STATE.ERROR;
+			        	error_id = 6;
+						System.out.println("ERROR " + error_id + " on line " + line);
+						break;
+			        } // end problem info switch
+			        index += 1;
+			      } // end problem info while
+			      
+			      /** @todo  Add these truck types */
+			      
+			    }
+			    catch (Exception e)
+			    {
+			      System.out.println("Line could not be read");
+			    }
+			}
+			if(truckType <= 0 || truckType > numTruckTypes)
+			{
+				state = STATE.ERROR;
+				error_id = 7;
+				System.out.println("ERROR " + error_id + " on line " + line);
+				break;
+			}
+			if(state == STATE.ERROR)
+			{
+				break;
+			}
+			// Should have good truck data
+			
+			/** @todo add truck to depots[lastDepot] */
+			
+			// Next line could be another depot
+			// Or it could be the start of the customers
+			if(lastDepot < numDepots)
+			{
+				// There are more depots to process
+				// Update state
+				state = STATE.DEPOT_INFO;
+			}
+			else
+			{
+				// That was the last depot
+				// Update state
+				state = STATE.CUSTOMER_INFO;
+			}
+			break; // break from truck info
+		case CUSTOMER_INFO:
+			for(lastCustomer = 1; lastCustomer <= numCustomers; lastCustomer++)
+			{
+				line += 1;
+				if(state == STATE.ERROR)
+				{
+					break;
+				}
+				index = 0;
+				// Read in a customer
+			    try
+			    {
+			      readLn = br.readLine();
+			      // print out the line that was read
+			      System.out.println("This line is:" + readLn);
+
+			      st = new StringTokenizer(readLn);
+			      while(st.hasMoreTokens())
+			      { //while there are more tokens
+			        switch (index)
+			        {
+			          case 0:
+				            xC = Integer.parseInt(st.nextToken());
+				            break;
+			          case 1:
+				            yC = Integer.parseInt(st.nextToken());
+				            break;
+			          case 2:
+				            demand = Integer.parseInt(st.nextToken());
+				            break;
+			          case 3:
+				            twStartHour = Integer.parseInt(st.nextToken());
+				            break;
+			          case 4:
+				            twEndHour = Integer.parseInt(st.nextToken());
+				            break;
+			          default:
+				        	// Should not have any more characters
+				        	state = STATE.ERROR;
+				        	error_id = 8;
+							System.out.println("ERROR " + error_id + " on line " + line);
+				        	break;
+			        } // end problem info switch
+
+					if(index >= 2 && demand <= 0)
+					{
+						state = STATE.ERROR;
+						error_id = 9;
+						System.out.println("ERROR " + error_id + " on line " + line);
+						break;
+					}
+
+					/** @todo add customer */
+					
+			        index += 1;
+			      } // end problem info while
+			      
+			    }
+			    catch (Exception e)
+			    {
+			      System.out.println("Line could not be read");
+			    }
+			}
+			if(state == STATE.ERROR)
+			{
+				break;
+			}
+			
+			// shouldnt be any more lines
+			// Update state
+			state = STATE.DONE;
+			break; // break from customer info
+		case DONE:
+			break;
+		default:
+			break;
+				
+		}
+	}
+	
+    return 1;
+  }
+  
+  /**
+   * Print  out the data to the console
+   */
+
+  public void printDataToConsole() {
+    try {
+      mainShipments.printVRPShipmentsToConsole();
+    }
+    catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  /**
+   * Write out the data file that was read in
+   * @param file name of file used for generating the data
+   */
+
+  public void writeDataFile(String file)
+  {
+	  
+  }
+
+  /**
+   * Will write a long detailed solution for the problem
+   * @param file name of the file to write to
+   */
+  public void writeLongSolution(String file)
+  {
+	  
+  }
+
+  /**
+   * Will write a short solution for the problem
+   * @param file name of the file to write to
+   */
+  public void writeShortSolution(String file)
+  {
+	  
+  }
+
+} //End of VRPTW file

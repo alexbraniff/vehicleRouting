@@ -1,0 +1,189 @@
+package edu.sru.thangiah.zeus.vrptw;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Vector;
+
+import com.sun.javafx.collections.MappingChange;
+import com.sun.javafx.collections.MappingChange.Map;
+import com.sun.xml.internal.bind.v2.schemagen.xmlschema.List;
+
+import edu.sru.thangiah.zeus.core.ProblemInfo;
+import edu.sru.thangiah.zeus.vrptw.vrptwcostfunctions.*;
+
+public class VRPTWRoot {
+  /**
+   * Constructor. Runs the VRP and calculates the total CPU time
+   */
+  public VRPTWRoot() {
+
+    //Settings for the ProblemInfo class
+    //Problem info consists of a set of static values that are used by a number
+    //of different classes. The following has to be set in order for the program
+    //to function correctly.
+    ProblemInfo.nodesLLLevelCostF = new VRPTWNodesLLCostFunctions();
+    ProblemInfo.truckLevelCostF = new VRPTWTruckCostFunctions();
+    ProblemInfo.truckLLLevelCostF = new VRPTWTruckLLCostFunctions();
+    ProblemInfo.depotLevelCostF = new VRPTWDepotCostFunctions();
+    ProblemInfo.depotLLLevelCostF = new VRPTWDepotLLCostFunctions();
+    //Paths for temporary, input and output files
+    //ProblemInfo.currDir gives the working directory of the program
+    ProblemInfo.tempFileLocation = ProblemInfo.workingDirectory+"/temp";
+    ProblemInfo.inputPath = ProblemInfo.workingDirectory+"/data";
+
+    ProblemInfo.outputPath = ProblemInfo.workingDirectory+"/data";
+    
+    
+    boolean isForSolutions = true;
+    
+    // An array of arrays of strings representing folder paths
+    // for different problem sets
+    String[][] ps =
+    	{
+    			// Array
+    			{
+    				// Root of problem set inside of problems and results
+    				"VRP"
+	    			
+	    			// Sub folders inside of root
+    				
+    				
+    			},
+    			{
+    				// Root of problem set inside of problems and results
+	    			"VRPTW",
+	    			
+	    			// Sub folders inside of root
+		    		"C1",
+		    		"C2",
+		    		"R1",
+		    		"R2",
+		    		"RC1",
+		    		"RC2"
+    			},
+    			{
+    				// Root of problem set inside of problems and results
+    				"MDVRP"
+	    			
+	    			// Sub folders inside of root
+    				
+    				
+    			}
+    	};
+    
+    String[] resultFolders = 
+    	{
+    		"VRPTW/Results/"	
+    	};
+    
+    //Vector<Map<String, String>> problemSets = new Vector<>();
+    //problemSets.add(0, new HashMap<String, String>());
+    
+    for(int i = 0; i < ps.length; i++)
+    {
+		String rootFolder = null;
+		Vector subFolders = new Vector<String>();
+		
+    	for(int j = 0; j < ps[i].length; j++)
+    	{
+    		
+    		switch(j)
+    		{
+    		case 0:
+    			rootFolder = ps[i][j];
+    			break;
+    		default:
+    			subFolders.add(j - 1, ps[i][j]);
+    			break;
+    		}
+    	}
+    	
+    	switch(rootFolder)
+    	{
+    	case "VRP":
+    		
+    		break;
+    	case "VRPTW":
+    		for(int sf = 0; sf < subFolders.size(); sf++)
+    		{
+    			String subFolder = (String) subFolders.elementAt(sf);
+    			System.out.println("SUBFOLDER: " + subFolder);
+	    		for(int heuristicMode = 1; heuristicMode <= 3; heuristicMode++)
+	    		{
+	    			System.out.println("HEURISTIC MODE: " + heuristicMode);
+	    			String filepath = null;
+	    			
+	    			switch(subFolder)
+	    			{
+	    			case "C1":
+	    				for(int problemNumber = 1; problemNumber <= 9; problemNumber++)
+	    				{
+	    					String pn = String.format("%02d", problemNumber);
+	    	    			System.out.println("ROOT: sf=" + subFolder + ", rf=" + rootFolder + " // " + ProblemInfo.inputPath + "/" + rootFolder + "/Problems/" + subFolder + "/c10" + problemNumber + ".xlsx");
+	    					filepath = ProblemInfo.inputPath + "/" + rootFolder + "/Problems/" + subFolder + "/c1" + pn + ".xlsx";
+	    					new VRPTW(heuristicMode, filepath);
+	    				}
+	    				break;
+	    			case "C2":
+	    				for(int problemNumber = 1; problemNumber <= 8; problemNumber++)
+	    				{
+	    					String pn = String.format("%02d", problemNumber);
+	    	    			System.out.println("ROOT: sf=" + subFolder + ", rf=" + rootFolder + " // " + ProblemInfo.inputPath + "/" + rootFolder + "/Problems/" + subFolder + "/c20" + problemNumber + ".xlsx");
+	    					filepath = ProblemInfo.inputPath + "/" + rootFolder + "/Problems/" + subFolder + "/c2" + pn + ".xlsx";
+	    					new VRPTW(heuristicMode, filepath);
+	    				}
+	    				break;
+	    			case "R1":
+	    				for(int problemNumber = 1; problemNumber <= 12; problemNumber++)
+	    				{
+	    					String pn = String.format("%02d", problemNumber);
+	    	    			System.out.println("ROOT: sf=" + subFolder + ", rf=" + rootFolder + " // " + ProblemInfo.inputPath + "/" + rootFolder + "/Problems/" + subFolder + "/r10" + problemNumber + ".xlsx");
+	    					filepath = ProblemInfo.inputPath + "/" + rootFolder + "/Problems/" + subFolder + "/r1" + pn + ".xlsx";
+	    					new VRPTW(heuristicMode, filepath);
+	    				}
+	    				break;
+	    			case "R2":
+	    				for(int problemNumber = 1; problemNumber <= 11; problemNumber++)
+	    				{
+	    					String pn = String.format("%02d", problemNumber);
+	    	    			System.out.println("ROOT: sf=" + subFolder + ", rf=" + rootFolder + " // " + ProblemInfo.inputPath + "/" + rootFolder + "/Problems/" + subFolder + "/r20" + problemNumber + ".xlsx");
+	    					filepath = ProblemInfo.inputPath + "/" + rootFolder + "/Problems/" + subFolder + "/r2" + pn + ".xlsx";
+	    					new VRPTW(heuristicMode, filepath);
+	    				}
+	    				break;
+	    			case "RC1":
+	    				for(int problemNumber = 1; problemNumber <= 8; problemNumber++)
+	    				{
+	    					String pn = String.format("%02d", problemNumber);
+	    	    			System.out.println("ROOT: sf=" + subFolder + ", rf=" + rootFolder + " // " + ProblemInfo.inputPath + "/" + rootFolder + "/Problems/" + subFolder + "/rc10" + problemNumber + ".xlsx");
+	    					filepath = ProblemInfo.inputPath + "/" + rootFolder + "/Problems/" + subFolder + "/rc1" + pn + ".xlsx";
+	    					new VRPTW(heuristicMode, filepath);
+	    				}
+	    				break;
+	    			case "RC2":
+	    				for(int problemNumber = 1; problemNumber <= 8; problemNumber++)
+	    				{
+	    					String pn = String.format("%02d", problemNumber);
+	    	    			System.out.println("ROOT: sf=" + subFolder + ", rf=" + rootFolder + " // " + ProblemInfo.inputPath + "/" + rootFolder + "/Problems/" + subFolder + "/rc20" + problemNumber + ".xlsx");
+	    					filepath = ProblemInfo.inputPath + "/" + rootFolder + "/Problems/" + subFolder + "/rc2" + pn + ".xlsx";
+	    					new VRPTW(heuristicMode, filepath);
+	    				}
+	    				break;
+		    		}
+	    			System.out.println("Out of switch");
+	    		}
+    			System.out.println("Finished all three heuristics on " + subFolder);
+    		}
+			System.out.println("Finished all heuristics on " + rootFolder);
+    		break;
+    	case "MDVRP":
+    		
+    		break;
+    	default:
+    		
+    		break;
+    	}
+    }
+
+  }
+}

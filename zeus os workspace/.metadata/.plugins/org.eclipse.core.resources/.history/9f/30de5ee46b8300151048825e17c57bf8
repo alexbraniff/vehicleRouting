@@ -1,0 +1,279 @@
+package edu.sru.thangiah.zeus.vrptw;
+
+import java.io.*;
+import java.util.*;
+
+import edu.sru.thangiah.zeus.core.*;
+import edu.sru.thangiah.zeus.excelimport.*;
+import edu.sru.thangiah.zeus.vrptw.vrptwqualityassurance.*;
+import edu.sru.thangiah.zeus.gui.*;
+import edu.sru.thangiah.zeus.localopts.OptInfo;
+import edu.sru.thangiah.zeus.localopts.interopts.Exchange11;
+import edu.sru.thangiah.zeus.localopts.interopts.FirstBestInterSearch;
+import edu.sru.thangiah.zeus.localopts.interopts.FirstFirstInterSearch;
+import edu.sru.thangiah.zeus.metaheuristics.simulatedannealing.SimulatedAnnealing;
+import edu.sru.thangiah.zeus.vrptw.LinearGreedyInsertShipment;
+import edu.sru.thangiah.zeus.vrptw.SmallestPolarAngleToDepot;
+
+
+/**
+ *
+ * <p>Title:</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2005</p>
+ * <p>Company: </p>
+ * @author Sam R. Thangiah
+ * @version 2.0
+ */
+
+public class VRPTW {
+	
+	private int m, // number of vehicles
+				n, // number of customers
+				d, // number of depots
+				Q, // maximum capacity of vehicle
+				D; // maximum duration of route
+
+	private long startTime, endTime;
+	private Vector mainOpts;
+	private Vector optInformation;
+	private VRPTWDepotLinkedList mainDepots;
+	private VRPTWShipmentLinkedList mainShipments;
+	private VRPTWQualityAssurance vrptwQA;
+	
+	private VRPTWProblemInfo problemInfo;
+	
+  //constructor for the class
+  public VRPTW(String dataFile)
+  {
+	  boolean isDiagnostic = true;
+	  
+	  problemInfo = new VRPTWProblemInfo();
+	  
+	  mainShipments = null;
+	  mainDepots = null;
+	  
+	  // Set up Selection Heuristic
+	  /** @todo  Make a ClosestEuclideanDistanceSoonestTimeWindow Selection Heuristic*/
+	  ProblemInfo.selectShipType = new GreatestEuclideanDistanceFromDepot();
+	  Settings.printDebug(Settings.COMMENT, GreatestEuclideanDistanceFromDepot.WhoAmI());
+	  
+	  // set up the shipment insertion type
+	  ProblemInfo.insertShipType = new LinearGreedyInsertShipment();
+	  Settings.printDebug(Settings.COMMENT, LinearGreedyInsertShipment.WhoAmI());
+	  
+	  System.out.println("Attempt to read: " + dataFile);
+	  readDataFromFile(dataFile);
+	  
+	  if(this.mainShipments.getVRPTWHead() == null)
+	  {
+		  Settings.printDebug(Settings.ERROR, "VRPTW: Shipment Linked List is Empty");
+		  return;
+	  }
+	  
+	  startTime = System.currentTimeMillis();
+	  
+	  createInitialRoutes();
+	  System.out.println("Completed initial routes");
+	  
+	  VRPTWDepot theDepot = (VRPTWDepot) mainDepots.getHead().getNext();
+	  while(theDepot != (VRPTWDepot) mainDepots.getTail())
+	  {
+		  int truckNo = 1;
+		  VRPTWTruck theTruck = (VRPTWTruck) theDepot.getMainTrucks().getHead().getNext();
+		  while(theTruck != (VRPTWTruck) theDepot.getMainTrucks().getTail())
+		  {
+			  VRPTWAttributes theAttributes = (VRPTWAttributes) theTruck.getMainNodes().getAttributes();
+			  System.out.println("Truck #" + truckNo + " penalty is " + theAttributes.getTotalPenalty());
+			  truckNo++;
+			  theTruck = (VRPTWTruck) theTruck.getNext();
+		  }
+		  theDepot = (VRPTWDepot) theDepot.getNext();
+	  }
+
+	  ZeusGui guiPost = new ZeusGui((DepotLinkedList) mainDepots, (ShipmentLinkedList) mainShipments);
+  } 
+
+  /**
+   * Creates the initial solution for the problem
+   */
+  public void createInitialRoutes()
+  {
+	  VRPTWDepot currDepot = null;
+	  VRPTWShipment currShip = null;
+	  
+	  EarliestTimeWindow earliestTimeWindow = new EarliestTimeWindow();
+	  TightestTimeWindow tightestTimeWindow = new TightestTimeWindow();
+	  GreatestEuclideanDistanceFromDepot greatestDistanceFromDepot = new GreatestEuclideanDistanceFromDepot();
+      
+      while(!mainShipments.isAllShipsAssigned())
+      {
+    	  VRPTWShipment earliestShipment = earliestTimeWindow.getSelectShipment(mainShipments);
+    	  VRPTWShipment greatestDistanceShipment= greatestDistanceFromDepot.getSelectShipment(currDepot, mainShipments);
+    	  
+    	  //VRPTWShipment tightestShipment = tightestTimeWindow.getSelectShipment(mainShipments);
+    	  
+    	  int x, y;
+    	  
+    	  // Get x and y of depot
+    	  currDepot = (VRPTWDepot) mainDepots.getVRPTWHead().getNext();
+    	  x = (int) currDepot.getXCoord();
+    	  y = (int) currDepot.getYCoord();
+    	  
+    	  // use main depots and shipments to get next shipment
+    	  //VRPTWShipment theShipment = mainShipments.getNextInsertShipment(mainDepots, currDepot, mainShipments, currShip);
+    	  VRPTWShipment earliestShipment = ((GreatestEuclideanDistanceFromDepot) ProblemInfo.selectShipType).getSelectShipment(currDepot, mainShipments);
+    	  
+    	  if(earliestShipment == null)
+    	  {
+    		  //shipment is null, print error message
+    	      Settings.printDebug(Settings.COMMENT, "No shipment was selected");
+    	  }
+    	  
+    	  // Insert shipment into the route
+    	  if(mainDepots.insertShipment(problemInfo, earliestShipment))
+    	  {
+  	        Settings.printDebug(Settings.COMMENT,
+                      			"The Shipment: <" + earliestShipment.getIndex() +// " " + theShipment +
+                      			"> was routed");
+  	        //tag the shipment as being routed
+    	  }
+    	  else
+    	  {
+    		  Settings.printDebug(Settings.COMMENT, "The Shipment: <" + earliestShipment.getIndex() +
+                      "> cannot be routed");
+    	  }
+      }
+      ProblemInfo.depotLLLevelCostF.calculateTotalsStats(mainDepots);
+  }
+  
+  //read in the data from the requested file in token format
+  public int readDataFromFile(String VRPTWFileName) {
+	  
+	  // read in the MDVRP data from the listed file and load the information
+	  // into the availShipments linked list
+	  DataFields problemData;
+	  try
+	  { // Try to read in the datafile
+		  // VRPTW is Problem Type 3
+		  ExcelImport problemFile = new ExcelImport(VRPTWFileName, 3);
+		  problemData = problemFile.getData();
+		  
+		  this.Q = problemData.getCapacity();
+		  this.problemInfo.setMaxCapacity(this.Q);
+		  
+		  this.D = problemData.getDuration();
+		  this.problemInfo.setMaxDuration(this.D);
+		  
+		  this.n = problemData.getNumNodes();
+		  this.problemInfo.setNumShipments(this.n);
+		  
+		  if(this.problemInfo.getNumShipments() <= 0)
+		  {
+			  // No customers...
+			  return 0;
+		  }
+		  
+		  this.mainDepots = new VRPTWDepotLinkedList();
+		  this.mainShipments = new VRPTWShipmentLinkedList();
+		  
+		  for(int i = 1; i <= this.problemInfo.getNumShipments(); i++)
+		  {
+			  VRPTWShipment theShipment = new VRPTWShipment(i, problemData.getNodeX(i), problemData.getNodeY(i),
+						problemData.getNodeDemand(i), problemData.getNodeEarly(i),
+						problemData.getNodeLate(i), problemData.getNodeTime(i));
+			  
+			  this.mainShipments.insertShipment(theShipment);
+		  }
+		  
+		  this.d = problemData.getNumDepots();
+		  this.problemInfo.setNumDepots(this.d);
+		  
+		  if(this.problemInfo.getNumDepots() > 1)
+		  { // Check for more than one depot
+			  // This is a MDVRPTW problem not VRPTW
+			  return 0;
+		  }
+		  
+		  // Set up num trucks here
+		  double totalDemand = 0;
+		  VRPTWShipment curShip = (VRPTWShipment) this.mainShipments.getHead().getNext();
+		  
+		  while(curShip != (VRPTWShipment) this.mainShipments.getTail())
+		  {
+			  totalDemand += curShip.getDemand();
+			  curShip = (VRPTWShipment) curShip.getNext();
+		  }
+		  
+		  //this.m = (int) Math.ceil(totalDemand / problemData.getCapacity());
+		  this.m = 15;
+		  
+		  System.out.println("Num trucks needed to carry total demand is " + this.m);
+		  
+		  this.problemInfo.setNumTrucks(this.m);
+		  
+		  VRPTWTruckType onlyTruckType =  new VRPTWTruckType(0, Q, D);
+		  this.problemInfo.setTruckType(onlyTruckType);
+		  
+		  for(int i = 0; i < this.problemInfo.getNumDepots(); i++)
+		  {
+			  VRPTWDepot theDepot = new VRPTWDepot(i, problemData.getDepotX(i), problemData.getDepotY(i));
+			  VRPTWTruckLinkedList mainTrucks = new VRPTWTruckLinkedList();
+			  
+			  for(int j = 0; j < this.problemInfo.getNumTrucks(); j++)
+			  {
+				  VRPTWTruck theTruck = new VRPTWTruck(this.problemInfo.getTruckType(), (int) theDepot.getXCoord(), (int) theDepot.getYCoord());
+				  theTruck.setMainNodes(new VRPTWNodesLinkedList());
+				  mainTrucks.insertTruckLast(theTruck);
+				  System.out.println("MainTrucks count:" + mainTrucks.getSize());
+			  }
+			  
+			  theDepot.setMainTrucks(mainTrucks);
+			  this.mainDepots.insertDepotLast(theDepot);
+		  }
+	  }
+	  catch(IOException e)
+	  {
+		  System.out.println("Error importing excel file");
+	  }
+	  
+	  return 1;
+  }
+  
+  /**
+   * Print  out the data to the console
+   */
+
+  public void printDataToConsole() {
+    
+  }
+
+  /**
+   * Write out the data file that was read in
+   * @param file name of file used for generating the data
+   */
+
+  public void writeDataFile(String file)
+  {
+	  
+  }
+
+  /**
+   * Will write a long detailed solution for the problem
+   * @param file name of the file to write to
+   */
+  public void writeLongSolution(String file)
+  {
+	  
+  }
+
+  /**
+   * Will write a short solution for the problem
+   * @param file name of the file to write to
+   */
+  public void writeShortSolution(String file)
+  {
+	  
+  }
+
+} //End of VRPTW file

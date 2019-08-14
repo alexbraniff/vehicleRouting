@@ -1,0 +1,774 @@
+package edu.sru.thangiah.zeus.vrptw;
+
+import java.io.*;
+import java.text.DecimalFormat;
+import java.util.*;
+
+import org.neo4j.driver.v1.Driver;
+import org.neo4j.driver.v1.GraphDatabase;
+import org.neo4j.driver.v1.Result;
+import org.neo4j.driver.v1.Session;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+
+import com.sun.xml.internal.ws.util.StringUtils;
+
+import edu.sru.thangiah.zeus.core.*;
+import edu.sru.thangiah.zeus.excelexport.ExcelExport;
+import edu.sru.thangiah.zeus.excelimport.*;
+import edu.sru.thangiah.zeus.vrptw.vrptwqualityassurance.*;
+import edu.sru.thangiah.zeus.vrptwgui.*;
+import edu.sru.thangiah.zeus.localopts.OptInfo;
+import edu.sru.thangiah.zeus.localopts.interopts.Exchange11;
+import edu.sru.thangiah.zeus.localopts.interopts.FirstBestInterSearch;
+import edu.sru.thangiah.zeus.localopts.interopts.FirstFirstInterSearch;
+import edu.sru.thangiah.zeus.metaheuristics.simulatedannealing.SimulatedAnnealing;
+import edu.sru.thangiah.zeus.vrptw.LinearGreedyInsertShipment;
+import edu.sru.thangiah.zeus.vrptw.SmallestPolarAngleToDepot;
+
+
+/**
+ *
+ * <p>Title:</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2005</p>
+ * <p>Company: </p>
+ * @author Sam R. Thangiah
+ * @version 2.0
+ */
+
+public class VRPTW {
+	
+	// Heuristic Modes:
+	// 1: Solomon's Savings Heuristic
+	// 2: Solomon's Time-Oriented Nearest Neighbor Heuristic
+	// 3: Solomon's Time-Oriented Sweep Heuristic
+	private int heuristicMode;
+	private String heuristic;
+	
+	private int m, // number of vehicles
+				n, // number of customers
+				d, // number of depots
+				Q, // maximum capacity of vehicle
+				D; // maximum duration of route
+
+	private long startTime, endTime;
+	private double elapsedTime;
+	private Vector mainOpts;
+	private Vector optInformation;
+	private VRPTWDepotLinkedList mainDepots;
+	private VRPTWShipmentLinkedList mainShipments;
+	private VRPTWQualityAssurance vrptwQA;
+	
+	private VRPTWProblemInfo problemInfo;
+	
+	private String filename;
+	
+	private boolean isForSolutions;
+	
+  //constructor for the class
+  public VRPTW(int heuristicMode, String dataFile, boolean isForSolutions)
+  {
+	  this.isForSolutions = isForSolutions;
+	  
+	  this.filename = dataFile;
+	  
+	  System.out.println(dataFile);
+	  
+	  this.heuristicMode = heuristicMode;
+	  switch(this.heuristicMode)
+	  {
+	  case 1:
+		  this.heuristic = "Savings";
+		  break;
+	  case 2:
+		  this.heuristic = "NearestNeighbor";
+		  break;
+	  case 3:
+		  this.heuristic = "SolomonsInsertion";
+		  break;
+	  }
+	  
+	  boolean isDiagnostic = true;
+	  
+	  problemInfo = new VRPTWProblemInfo();
+	  this.problemInfo.setHeuristicMode(this.heuristicMode);
+	  
+	  mainShipments = null;
+	  mainDepots = null;
+	  
+	  ////System.out.println("Attempt to read: " + dataFile);
+	  readDataFromFile(dataFile);
+	  
+	  if(this.mainShipments.getHead() == null)
+	  {
+		  //Settings.printDebug(Settings.ERROR, "VRPTW: Shipment Linked List is Empty");
+		  return;
+	  }
+
+	  this.problemInfo.setMainDepots(mainDepots);
+	  this.problemInfo.setMainShipments(mainShipments);
+	  
+	  VRPTWDepot theDepot = null;
+	  ZeusVRPTWGui guiPost = null;
+	  
+	  String dataFilename, longFilename, shortFilename;
+	  
+	  printDataToConsole();
+
+	  dataFilename = this.filename.replace("Problems", "Results").replace(".xlsx", "-" + this.heuristic + "-data.xlsx");
+	  writeDataFile(dataFilename);
+			  
+	  switch(this.problemInfo.getHeuristicMode())
+	  {
+	  case 1:
+		  
+		  // Set up Selection Heuristic
+		  problemInfo.setSelectionHeuristic(new ClosestEuclideanDistToDepot());
+		  //Settings.printDebug(Settings.COMMENT, ((ClosestEuclideanDistToDepot) problemInfo.getSelectionHeuristic()).WhoAmI());
+		  
+		  // set up the shipment insertion type
+		  problemInfo.setInsertionHeuristic(new SolomonsSavingsInsert(1, 200));
+		  //Settings.printDebug(Settings.COMMENT, ((SolomonsSavingsInsert) problemInfo.getInsertionHeuristic()).WhoAmI());
+
+		  startTime = System.currentTimeMillis();
+		  
+		  createInitialRoutes();
+		  //System.out.println("Completed initial routes");
+    	  
+    	  mainDepots.linkRoutes(this.problemInfo);
+    	  //System.out.println("VRPTW: Route linking completed");
+		  
+	      ProblemInfo.depotLLLevelCostF.calculateTotalsStats(mainDepots);
+		  
+		  endTime = System.currentTimeMillis();
+
+		  this.elapsedTime = ((double) (this.endTime - this.startTime) / 1000);
+		  Settings.printDebug(Settings.COMMENT, "VRPTW: Time elapsed: " + this.elapsedTime + " seconds");
+	
+		  break;
+	  case 2:
+		  
+		  // Set up Selection Heuristic
+		  problemInfo.setSelectionHeuristic(new ClosestEuclideanDistToLastShipment(1, 1, 0));
+		  //Settings.printDebug(Settings.COMMENT, ((ClosestEuclideanDistToLastShipment) problemInfo.getSelectionHeuristic()).WhoAmI());
+		  
+		  // set up the shipment insertion type
+		  problemInfo.setInsertionHeuristic(new SolomonsNearestNeighborInsert(1, 200));
+		  //Settings.printDebug(Settings.COMMENT, ((SolomonsNearestNeighborInsert) problemInfo.getInsertionHeuristic()).WhoAmI());
+
+		  startTime = System.currentTimeMillis();
+		  
+		  createInitialRoutes();
+		  //System.out.println("Completed initial routes");
+		  
+	      ProblemInfo.depotLLLevelCostF.calculateTotalsStats(mainDepots);
+		  
+		  endTime = System.currentTimeMillis();
+
+		  this.elapsedTime = ((double) (this.endTime - this.startTime) / 1000);
+		  Settings.printDebug(Settings.COMMENT, "VRPTW: Time elapsed: " + this.elapsedTime + " seconds");
+		  
+		  break;
+	  case 3:
+		  
+		  // Set up Selection Heuristic
+		  problemInfo.setSelectionHeuristic(new SmallestPolarAngleToDepot());
+		  //Settings.printDebug(Settings.COMMENT, ((SmallestPolarAngleToDepot) problemInfo.getSelectionHeuristic()).WhoAmI());
+		  
+		  // set up the shipment insertion type
+		  problemInfo.setInsertionHeuristic(new SolomonsSequentialInsert(1, 1, 1, 0));
+		  //Settings.printDebug(Settings.COMMENT, ((SolomonsSequentialInsert) problemInfo.getInsertionHeuristic()).WhoAmI());
+		  
+		  startTime = System.currentTimeMillis();
+		  
+		  createInitialRoutes();
+		  ////System.out.println("Completed initial routes");
+
+	      ProblemInfo.depotLLLevelCostF.calculateTotalsStats(mainDepots);
+		  
+		  endTime = System.currentTimeMillis();
+		  
+		  this.elapsedTime = ((double) (this.endTime - this.startTime) / 1000);
+		  Settings.printDebug(Settings.COMMENT, "VRPTW: Time elapsed: " + this.elapsedTime + " seconds");
+		  
+		  break;
+	  }
+
+	  System.out.println("Starting QA");
+	  
+	  vrptwQA = new VRPTWQualityAssurance(mainDepots, mainShipments);
+	  
+	  if(vrptwQA.runQA() == false)
+	  {
+	      Settings.printDebug(Settings.ERROR, "QA FAILED!");
+	  }
+	  else
+	  {
+	      Settings.printDebug(Settings.COMMENT, "QA succeeded");
+	  }
+	  
+	  this.problemInfo.setTotalTime(this.elapsedTime);
+	  
+	  VRPTWDepot d = (VRPTWDepot) mainDepots.getHead().getNext();
+	  while(d != (VRPTWDepot) mainDepots.getTail())
+	  {
+		  VRPTWTruck t = (VRPTWTruck) d.getMainTrucks().getHead().getNext();
+		  while(t != (VRPTWTruck) d.getMainTrucks().getTail())
+		  {
+			  ProblemInfo.nodesLLLevelCostF.calculateTotalsStats(t.getMainNodes());
+			  ProblemInfo.truckLevelCostF.calculateTotalsStats(t);
+			  
+			  t = (VRPTWTruck) t.getNext();
+		  }
+		  d = (VRPTWDepot) d.getNext();
+		  ProblemInfo.truckLLLevelCostF.calculateTotalsStats(d.getMainTrucks());
+		  ProblemInfo.depotLevelCostF.calculateTotalsStats(d);
+	  }
+	  ProblemInfo.depotLLLevelCostF.calculateTotalsStats(mainDepots);
+
+	  longFilename = this.filename.replace("Problems", "Results").replace(".xlsx", "-" + this.heuristic + "-long.xlsx");
+	  shortFilename = this.filename.replace("Problems", "Results").replace(".xlsx", "-" + this.heuristic + "-short.xlsx");
+	  
+	  writeLongSolution(longFilename);
+	  writeShortSolution(shortFilename);
+	
+	  if(!this.isForSolutions)
+	  {
+		  guiPost = new ZeusVRPTWGui(this.filename, mainDepots, (ShipmentLinkedList) mainShipments);
+	  }
+	  
+	  /*
+	  System.out.println("Starting QA");
+	  vrptwQA = new VRPTWQualityAssurance(mainDepots, mainShipments);
+	  if(!vrptwQA.runQA())
+	  {
+		  Settings.printDebug(Settings.ERROR, "QA FAILED!");
+	  }
+	  else
+	  {
+		  Settings.printDebug(Settings.COMMENT, "QA succeeded");
+	  }
+	  */
+  }
+
+  /**
+   * Creates the initial solution for the problem
+   */
+  public void createInitialRoutes()
+  {
+	  Vector unrouted = new Vector<VRPTWShipment>();
+	  VRPTWDepot currDepot = (VRPTWDepot) mainDepots.getVRPTWHead().getNext();
+	  VRPTWShipment currShip = null;
+	  
+	  switch(this.problemInfo.getHeuristicMode())
+	  {
+	  case 1:
+		  // Solomon's Savings Heuristics
+	      while(!mainShipments.isAllShipsAssigned())
+	      {
+		      //check if selection and insertion type methods have been selected
+		      if (this.problemInfo.getSelectionHeuristic() == null) {
+		        Settings.printDebug(Settings.ERROR,
+		                          "No selection shipment type has been assigned");
+		
+		      }
+		      
+		      if (this.problemInfo.getInsertionHeuristic() == null) {
+		        Settings.printDebug(Settings.ERROR,
+		                          "No insertion shipment type has been assigned");
+		      }
+	    	  
+	    	  currShip = ((SmallestPolarAngleToDepot) problemInfo.getSelectionHeuristic()).getNextInsertShipment(this.problemInfo, 
+	    			  mainDepots, currDepot, mainShipments, currShip);
+	    	  //Settings.printDebug(Settings.COMMENT, "VRPTW: Shipment selected <" + currShip.getIndex() + ">");
+	    	  ////System.out.println("~VRPTW: Shipment details (e:" + currShip.getEarly() + "|l:" + currShip.getLate() + "|s:" + currShip.getDemand() + ")");
+	    	  
+	    	  
+	    	  // Ensure a shipment was selected
+	    	  if(currShip == null)
+	    	  {
+	    		  // No shipment was selected  
+	    	      Settings.printDebug(Settings.COMMENT, "VRPTW: No shipment was selected");
+	    	  }
+	
+	    	  // Use Solomon's Savings Insertion heuristic to insert each customer into its own route
+	    	  if(mainDepots.insertShipment(this.problemInfo, currShip))
+	    	  {
+	    	      //Settings.printDebug(Settings.COMMENT, "VRPTW: The Shipment was routed <" + currShip.getIndex() + ">");
+	    	      
+			      // Tag the shipment as being routed
+	    	      if(!currShip.getIsAssigned())
+	    	      {
+	    	    	  currShip.setIsAssigned(true);
+	    	      }
+			  }
+			  else
+			  {
+				  Settings.printDebug(Settings.COMMENT, "VRPTW: The Shipment cannot be routed <" + currShip.getIndex() + ">");
+			  }
+	      }
+		  break;
+	  case 2:
+		  // Solomon's Time-Oriented Nearest Neighbor Heuristics
+		  
+	      //check if selection and insertion type methods have been selected
+	      if (this.problemInfo.getSelectionHeuristic() == null) {
+	        Settings.printDebug(Settings.ERROR,
+	                          "No selection shipment type has been assigned");
+	
+	      }
+	      
+	      if (this.problemInfo.getInsertionHeuristic() == null) {
+	        Settings.printDebug(Settings.ERROR,
+	                          "No insertion shipment type has been assigned");
+	      }
+	      
+	      while(!mainShipments.isAllShipsAssigned())
+	      {
+	    	  currDepot = (VRPTWDepot) mainDepots.getVRPTWHead().getNext();
+	    	  
+	    	  // Use Sweep heuristic to select shipments
+	    	  currShip = ((ClosestEuclideanDistToLastShipment) problemInfo.getSelectionHeuristic()).getNextNNInsertShipment(this.problemInfo, 
+	    			  mainDepots, currDepot, mainShipments, this.problemInfo.getNNLastNode());
+	    	  
+	    	  
+	    	  // Ensure a shipment was selected
+	    	  if(currShip == null)
+	    	  {
+	    		  // No shipment was selected  
+	    	      Settings.printDebug(Settings.COMMENT, "VRPTW: No shipment was selected");
+	    	      this.problemInfo.setNNLastNode(null);
+	    	  }
+	    	  else
+	    	  {
+		    	  //Settings.printDebug(Settings.COMMENT, "VRPTW: Shipment selected <" + currShip.getIndex() + ">");
+		    	  //System.out.println("~VRPTW: Shipment details (e:" + currShip.getEarly() + "|l:" + currShip.getLate() + "|s:" + currShip.getDemand() + ")");
+		
+		    	  // Use Solomon's Sequential Insertion heuristic to choose where to insert shipment in current route
+		    	  if(mainDepots.insertShipment(this.problemInfo, currShip))
+		    	  {
+		    	      //Settings.printDebug(Settings.COMMENT, "VRPTW: The Shipment was routed <" + currShip.getIndex() + ">");
+		    	      
+				      // Tag the shipment as being routed
+		    	      if(!currShip.getIsAssigned())
+		    	      {
+		    	    	  currShip.setIsAssigned(true);
+		    	      }
+				  }
+				  else
+				  {
+					  Settings.printDebug(Settings.COMMENT, "VRPTW: The Shipment cannot be routed <" + currShip.getIndex() + ">");
+				  }
+	    	  }
+	      }
+		  break;
+	  case 3:
+		  // Solomon's Time-Oriented Sweep Heuristic
+	      //check if selection and insertion type methods have been selected
+	      if (this.problemInfo.getSelectionHeuristic() == null) {
+	        Settings.printDebug(Settings.ERROR,
+	                          "No selection shipment type has been assigned");
+	
+	      }
+	      
+	      if (this.problemInfo.getInsertionHeuristic() == null) {
+	        Settings.printDebug(Settings.ERROR,
+	                          "No insertion shipment type has been assigned");
+	      }
+	      
+	      while(!mainShipments.isAllShipsAssigned())
+	      {
+	    	  currDepot = (VRPTWDepot) mainDepots.getVRPTWHead().getNext();
+	    	  
+	    	  // Use Sweep heuristic to select shipments
+	    	  currShip = ((SmallestPolarAngleToDepot) problemInfo.getSelectionHeuristic()).getNextInsertShipment(this.problemInfo, 
+	    			  mainDepots, currDepot, mainShipments, currShip);
+	    	  //Settings.printDebug(Settings.COMMENT, "VRPTW: Shipment selected <" + currShip.getIndex() + ">");
+	    	  ////System.out.println("~VRPTW: Shipment details (e:" + currShip.getEarly() + "|l:" + currShip.getLate() + "|s:" + currShip.getDemand() + ")");
+	    	  
+	    	  
+	    	  // Ensure a shipment was selected
+	    	  if(currShip == null)
+	    	  {
+	    		  // No shipment was selected  
+	    	      Settings.printDebug(Settings.COMMENT, "VRPTW: No shipment was selected");
+	    	  }
+	
+	    	  // Use Solomon's Sequential Insertion heuristic to choose where to insert shipment in current route
+	    	  if(mainDepots.insertShipment(this.problemInfo, currShip))
+	    	  {
+	    	      //Settings.printDebug(Settings.COMMENT, "VRPTW: The Shipment was routed <" + currShip.getIndex() + ">");
+	    	      
+			      // Tag the shipment as being routed
+	    	      if(!currShip.getIsAssigned())
+	    	      {
+	    	    	  currShip.setIsAssigned(true);
+	    	      }
+			  }
+			  else
+			  {
+				  //Settings.printDebug(Settings.COMMENT, "VRPTW: The Shipment cannot be routed <" + currShip.getIndex() + ">");
+				  unrouted.add(currShip);
+	    	      currShip.getPrev().setNext(currShip.getNext());
+	    	      currShip.getNext().setPrev(currShip.getPrev());
+	    	      //System.out.println("VRPTW: Unrouted count is now " + unrouted.size());
+			  }
+	    	  
+	    	  
+	    	  
+	    	  /*
+	    	  // use main depots and shipments to get next shipment
+	    	  //VRPTWShipment theShipment = mainShipments.getNextInsertShipment(mainDepots, currDepot, mainShipments, currShip);
+	    	  
+	    	  VRPTWShipment earliestShipment = (
+	    			  (SmallestPolarAngleToDepot) ProblemInfo.selectShipType).getSelectShipment(
+														    					  mainDepots,
+																                  currDepot,
+																                  mainShipments,
+																                  currShip);
+	    	  //System.out.println("Sweep returned: " + earliestShipment.toString());
+	    	  
+	    	  if(earliestShipment == null)
+	    	  {
+	    		  //shipment is null, print error message
+	    	      Settings.printDebug(Settings.COMMENT, "No shipment was selected");
+	    	  }
+	    	  
+	    	  // Insert shipment into the route
+	    	  if(mainDepots.insertShipment(problemInfo, earliestShipment))
+	    	  {
+	  	        Settings.printDebug(Settings.COMMENT,
+	                      			"The Shipment: <" + earliestShipment.getIndex() +// " " + theShipment +
+	                      			"> was routed");
+	  	        //tag the shipment as being routed
+	    	  }
+	    	  else
+	    	  {
+	    		  Settings.printDebug(Settings.COMMENT, "The Shipment: <" + earliestShipment.getIndex() +
+	                      "> cannot be routed");
+	    	  }
+	    	  */
+	      }
+	      
+	      if(unrouted.size() > 0)
+	      {
+	    	  currShip = null;
+	    	  
+	    	  this.problemInfo.setHasStartedRoutingTheUnrouted(true);
+	    	  VRPTWShipmentLinkedList unroutedShipments = new VRPTWShipmentLinkedList();
+	    	  for(int i = 0; i < unrouted.size(); i++)
+	    	  {
+	    		  unroutedShipments.insertLast((VRPTWShipment) unrouted.elementAt(i));
+	    		  unrouted.removeElementAt(i);
+	    	  }
+	    	  
+	    	  String str = "(";
+	    	  VRPTWShipment ship = (VRPTWShipment) unroutedShipments.getHead().getNext();
+	    	  while(ship != (VRPTWShipment) unroutedShipments.getTail())
+	    	  {
+	    		  str += ship.getIndex() + ", ";
+	    		  ship = (VRPTWShipment) ship.getNext();
+	    	  }
+	    	  str += ")";
+	    	  System.out.println("UNROUTED SHIPMENTS: " + str);
+	    	  
+	    	  this.problemInfo.setSelectionHeuristic(new SmallestPolarAngleToDepot());
+	    	  
+	    	  if (this.problemInfo.getSelectionHeuristic() == null) {
+	  	        Settings.printDebug(Settings.ERROR,
+	  	                          "No selection shipment type has been assigned");
+	  	
+	  	      }
+	  	      
+	  	      if (this.problemInfo.getInsertionHeuristic() == null) {
+	  	        Settings.printDebug(Settings.ERROR,
+	  	                          "No insertion shipment type has been assigned");
+	  	      }
+	  	      
+	  	      while(!unroutedShipments.isAllShipsAssigned())
+	  	      {
+	  	    	  currDepot = (VRPTWDepot) mainDepots.getVRPTWHead().getNext();
+	  	    	  
+	  	    	  // Use Sweep heuristic to select shipments
+	  	    	  currShip = ((SmallestPolarAngleToDepot) problemInfo.getSelectionHeuristic()).getNextInsertShipment(this.problemInfo, 
+	  	    			  mainDepots, currDepot, unroutedShipments, currShip);
+	  	    	  //Settings.printDebug(Settings.COMMENT, "VRPTW: Shipment selected <" + currShip.getIndex() + ">");
+	  	    	  ////System.out.println("~VRPTW: Shipment details (e:" + currShip.getEarly() + "|l:" + currShip.getLate() + "|s:" + currShip.getDemand() + ")");
+	  	    	  
+	  	    	  
+	  	    	  // Ensure a shipment was selected
+	  	    	  if(currShip == null)
+	  	    	  {
+	  	    		  // No shipment was selected  
+	  	    	      Settings.printDebug(Settings.COMMENT, "VRPTW: No shipment was selected");
+	  	    	  }
+	  	
+	  	    	  // Use Solomon's Sequential Insertion heuristic to choose where to insert shipment in current route
+	  	    	  if(mainDepots.insertShipment(this.problemInfo, currShip))
+	  	    	  {
+	  	    	      //Settings.printDebug(Settings.COMMENT, "VRPTW: The Shipment was routed <" + currShip.getIndex() + ">");
+	  	    	      
+	  			      // Tag the shipment as being routed
+	  	    	      if(!currShip.getIsAssigned())
+	  	    	      {
+	  	    	    	  currShip.setIsAssigned(true);
+	  	    	      }
+	  			  }
+	  			  else
+	  			  {
+	  				  //Settings.printDebug(Settings.COMMENT, "VRPTW: The Shipment cannot be routed <" + currShip.getIndex() + ">");
+	  				  unrouted.add(currShip);
+	  	    	      currShip.getPrev().setNext(currShip.getNext());
+	  	    	      currShip.getNext().setPrev(currShip.getPrev());
+	  	    	      //System.out.println("VRPTW: Unrouted count is now " + unrouted.size());
+	  			  }
+	  	      }
+	      }
+	      
+	      if(unrouted.size() > 0)
+	      {
+	    	  currShip = null;
+	    	  
+	    	  this.problemInfo.setHasStartedRoutingTheUnrouted(true);
+	    	  VRPTWShipmentLinkedList unroutedShipments = new VRPTWShipmentLinkedList();
+	    	  for(int i = 0; i < unrouted.size(); i++)
+	    	  {
+	    		  unroutedShipments.insertLast((VRPTWShipment) unrouted.elementAt(i));
+	    		  unrouted.removeElementAt(i);
+	    	  }
+	    	  
+	    	  String str = "(";
+	    	  VRPTWShipment ship = (VRPTWShipment) unroutedShipments.getHead().getNext();
+	    	  while(ship != (VRPTWShipment) unroutedShipments.getTail())
+	    	  {
+	    		  str += ship.getIndex() + ", ";
+	    		  ship = (VRPTWShipment) ship.getNext();
+	    	  }
+	    	  str += ")";
+	    	  System.out.println("UNROUTED SHIPMENTS: " + str);
+	      }
+	      
+	      break;
+	  }
+  }
+  
+  //read in the data from the requested file in token format
+  public int readDataFromFile(String VRPTWFileName) {
+	  
+	  // read in the MDVRP data from the listed file and load the information
+	  // into the availShipments linked list
+	  DataFields problemData;
+	  try
+	  { // Try to read in the datafile
+		  // VRPTW is Problem Type 3
+		  ExcelImport problemFile = new ExcelImport(VRPTWFileName, 1);
+		  problemData = problemFile.getData();
+		  
+		  this.Q = problemData.getCapacity();
+		  this.problemInfo.setMaxCapacity(this.Q);
+		  
+		  this.D = problemData.getDuration();
+		  this.problemInfo.setMaxDuration(this.D);
+		  
+		  this.n = problemData.getNumNodes();
+		  this.problemInfo.setNumShipments(this.n);
+		  
+		  if(this.problemInfo.getNumShipments() <= 0)
+		  {
+			  // No customers...
+			  return 0;
+		  }
+		  
+		  this.mainDepots = new VRPTWDepotLinkedList();
+		  this.mainShipments = new VRPTWShipmentLinkedList();
+		  
+		  for(int i = 1; i <= this.problemInfo.getNumShipments(); i++)
+		  {
+			  VRPTWShipment theShipment = new VRPTWShipment(i, problemData.getNodeX(i), problemData.getNodeY(i),
+						problemData.getNodeDemand(i), problemData.getNodeEarly(i),
+						problemData.getNodeLate(i), problemData.getNodeTime(i));
+			  
+			  this.mainShipments.insertShipment(theShipment);
+		  }
+		  
+		  this.d = problemData.getNumDepots();
+		  this.problemInfo.setNumDepots(this.d);
+		  
+		  if(this.problemInfo.getNumDepots() > 1)
+		  { // Check for more than one depot
+			  // This is a MDVRPTW problem not VRPTW
+			  return 0;
+		  }
+		  
+		  // Num trucks is initially one
+		  this.m = 1;
+		  
+		  this.problemInfo.setNumTrucks(this.m);
+		  
+		  VRPTWTruckType onlyTruckType = new VRPTWTruckType(0, Q, D);
+		  this.problemInfo.setTruckType(onlyTruckType);
+		  
+		  for(int i = 0; i < this.problemInfo.getNumDepots(); i++)
+		  {
+			  VRPTWDepot theDepot = new VRPTWDepot(i, problemData.getDepotX(i), problemData.getDepotY(i));
+			  VRPTWTruckLinkedList mainTrucks = new VRPTWTruckLinkedList();
+			  
+			  for(int j = 0; j < this.problemInfo.getNumTrucks(); j++)
+			  {
+				  VRPTWTruck theTruck = new VRPTWTruck(this.problemInfo.getTruckType(), (int) theDepot.getXCoord(), (int) theDepot.getYCoord());
+				  mainTrucks.insertTruckLast(theTruck);
+				  //System.out.println("MainTrucks count:" + mainTrucks.getSize());
+			  }
+			  
+			  theDepot.setMainTrucks(mainTrucks);
+			  this.mainDepots.insertDepotLast(theDepot);
+		  }
+	  }
+	  catch(IOException e)
+	  {
+		  //System.out.println("Error importing excel file");
+	  }
+	  
+	  return 1;
+  }
+  
+  /**
+   * Print  out the data to the console
+   */
+
+	public void printDataToConsole()
+	{
+		try {
+			mainShipments.printVRPTWShipmentsToConsole();
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+  /**
+   * Write out the data file that was read in
+   * @param file name of file used for generating the data
+   */
+
+	public void writeDataFile(String file)
+	{
+		  try
+		  {
+			  ExcelExport dataFile = new ExcelExport(file, this.problemInfo);
+			  dataFile.writeDataFile();
+		  }
+		  catch(IOException e)
+		  {
+			  //System.out.println("Error importing excel file");
+		  }
+		  
+		  /*
+		try
+		{
+			PrintStream ps = new PrintStream(new FileOutputStream(file));
+			mainShipments.writeVRPTWShipments(ps);
+		}
+		catch(IOException ioex)
+		{
+			ioex.printStackTrace();
+		}
+		*/
+	}
+
+  /**
+   * Will write a long detailed solution for the problem
+   * @param file name of the file to write to
+   */
+  public void writeLongSolution(String file)
+  {
+	  try
+	  {
+		  ExcelExport longSolutionFile = new ExcelExport(file, this.problemInfo);
+		  longSolutionFile.writeLongSolution();
+	  }
+	  catch(IOException e)
+	  {
+		  //System.out.println("Error importing excel file");
+	  }
+	  
+	  /*
+	    try {
+	        PrintStream ps = new PrintStream(new FileOutputStream(file));
+	        mainDepots.printDepotLinkedList(ps);
+	      }
+	      catch (IOException ioex) {
+	        ioex.printStackTrace();
+	      }
+	      */
+  }
+
+  /**
+   * Will write a short solution for the problem
+   * @param file name of the file to write to
+   */
+	public void writeShortSolution(String file)
+	{
+		  try
+		  {
+			  ExcelExport longSolutionFile = new ExcelExport(file, this.problemInfo);
+			  longSolutionFile.writeShortSolution();
+		  }
+		  catch(IOException e)
+		  {
+			  //System.out.println("Error importing excel file");
+		  }
+		  
+		  /*
+		try
+		{
+			DecimalFormat df = new DecimalFormat("##0.000###");
+			
+			//PrintStream ps = new PrintStream(new FileOutputStream(ProblemInfo.
+			//outputPath + "/" + file + "_short.txt"));
+			PrintStream ps = new PrintStream(new FileOutputStream(file));
+			ps.println("File: " + file + " Num Depots: " +
+			this.problemInfo.getNumDepots() + " Num Pick Up Points: " +
+			this.problemInfo.getNumShipments() + " Num Trucks: " +
+			this.problemInfo.getNumTrucks() + " Processing Time: " +
+			df.format(this.elapsedTime) + " seconds");
+			ps.println(mainDepots.getAttributes().toDetailedString());
+			ps.println();
+			VRPTWDepot depotHead = (VRPTWDepot) mainDepots.getHead().getNext();
+			VRPTWDepot depotTail = (VRPTWDepot) mainDepots.getTail();
+			while(depotHead != depotTail)
+			{
+				VRPTWTruck truckHead = (VRPTWTruck) depotHead.getMainTrucks().getHead().getNext();
+				VRPTWTruck truckTail = (VRPTWTruck) depotHead.getMainTrucks().getTail();
+				while(truckHead != truckTail)
+				{
+					ps.print("Truck #" + truckHead.getTruckNum() + " MaxCap: " +
+					truckHead.getTruckType().getMaxCapacity() + " Demand: " +
+					truckHead.getMainNodes().getAttributes().getTotalDemand() + " ROUTE:");
+					VRPTWNodes nodesHead = (VRPTWNodes) truckHead.getMainNodes().getHead();
+					VRPTWNodes nodesTail = (VRPTWNodes) truckHead.getMainNodes().getTail();
+					while(nodesHead != nodesTail)
+					{
+						ps.print(nodesHead.getIndex() + " ");
+						nodesHead = (VRPTWNodes) nodesHead.getNext();
+					}
+					ps.println();
+					truckHead = (VRPTWTruck) truckHead.getNext();
+				}
+				ps.println();
+				ps.println();
+				depotHead = (VRPTWDepot) depotHead.getNext();
+			}
+			for(int i = 0; i < optInformation.size(); i++)
+			{
+				ps.println(optInformation.elementAt(i));
+			}
+		}
+		catch(IOException ioex)
+		{
+			ioex.printStackTrace();
+		}
+		*/
+	}
+} //End of VRPTW file

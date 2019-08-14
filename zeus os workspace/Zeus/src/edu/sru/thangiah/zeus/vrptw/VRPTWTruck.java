@@ -1,0 +1,86 @@
+package edu.sru.thangiah.zeus.vrptw;
+
+import edu.sru.thangiah.zeus.core.ProblemInfo;
+import edu.sru.thangiah.zeus.core.Attributes;
+//import the parent class
+import edu.sru.thangiah.zeus.core.Truck;
+
+public class VRPTWTruck
+    extends Truck implements java.io.Serializable, java.lang.Cloneable {
+	
+	private boolean isLinked;
+	
+  public VRPTWTruck() {
+	
+	  //Assign the nodes linkes list
+	 setMainNodes(new VRPTWNodesLinkedList());
+	  
+    //Assign the attributes
+    setAttributes(new VRPTWAttributes());
+  }
+
+  /**
+   * Constructor
+   * @param tt truck type
+   * @param depotX depot's x coordinate
+   * @param depotY depot's y coordinate
+   */
+  public VRPTWTruck(VRPTWTruckType tt, int depX, int depY) {
+    //super(tt, depX, depY);
+    setAttributes(new VRPTWAttributes());
+    setDepotX(depX);
+    setDepotY(depY);
+    setTruckNum(ProblemInfo.numTrucks++);
+    setTruckType(tt);
+
+    setMainNodes(new VRPTWNodesLinkedList(this, depX, depY, getTruckNum()));
+    
+    setIsLinked(false);
+
+  }
+
+  /**
+   * Returns the visit nodes linked list (route)
+   * @return route
+   */
+  public VRPTWNodesLinkedList getVRPTWMainNodes() {
+    return (VRPTWNodesLinkedList) getMainNodes();
+  }
+
+  /**
+   * Returns the next depot in the linked list
+   * @return next depot
+   */
+  public VRPTWTruck getVRPTWNext() {
+    return (VRPTWTruck) getNext();
+  }
+  
+  public boolean getIsLinked()
+  {
+	  return this.isLinked;
+  }
+  
+  public void setIsLinked(boolean l)
+  {
+	  this.isLinked = l;
+  }
+
+  /**
+   * Creates a clone of the current trucks. Does not create the next and prev
+   * links, that is the responsibility of the truck linked list clone() function
+   * @return Object truck clone
+   */
+  public Object clone() {
+    VRPTWTruck clonedTruck = new VRPTWTruck();
+
+    clonedTruck.setAttributes((VRPTWAttributes)this.getAttributes().clone());
+    clonedTruck.setDepotX(this.getDepotX());
+    clonedTruck.setDepotY(this.getDepotY());
+    clonedTruck.setMainNodes((VRPTWNodesLinkedList)this.getMainNodes().clone());
+    clonedTruck.setTruckNum(this.getTruckNum());
+    clonedTruck.setTruckType((VRPTWTruckType)this.getTruckType().clone());
+
+    return clonedTruck;
+  }
+
+}

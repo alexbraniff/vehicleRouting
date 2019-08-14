@@ -1,0 +1,55 @@
+package edu.sru.thangiah.zeus.vrptw.vrptwqualityassurance;
+
+import edu.sru.thangiah.zeus.qualityassurance.*;
+
+/**
+ *
+ * <p>Title:</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2005</p>
+ * <p>Company: </p>
+ * @author Sam R. Thangiah
+ * @version 2.0
+ */
+/** @todo Need to document the variables and the parameters */
+public class VRPTWQAShipment
+    extends QAShipment
+    implements java.io.Serializable, java.lang.Cloneable {
+	
+	private String e;
+	private String l;
+	private String duration;
+	
+  public VRPTWQAShipment() {
+  }
+  
+  public String getEarly()
+  {
+	  return this.e;
+  }
+  
+  public String getLate()
+  {
+	  return this.l;
+  }
+  
+  public String getDuration()
+  {
+	  return this.duration;
+  }
+  
+  public void setEarly(String e)
+  {
+	  this.e = e;
+  }
+  
+  public void setLate(String l)
+  {
+	  this.l = l;
+  }
+  
+  public void setDuration(String d)
+  {
+	  this.duration = d;
+  }
+}

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename type &apos;edu.sru.thangiah.zeus.vrptwgui.ZeusGui&apos; to &apos;ZeusVRPTWGui&apos;&#x0D;&#x0A;- Original project: &apos;Zeus&apos;&#x0D;&#x0A;- Original element: &apos;edu.sru.thangiah.zeus.vrptwgui.ZeusGui&apos;&#x0D;&#x0A;- Renamed element: &apos;edu.sru.thangiah.zeus.vrptwgui.ZeusVRPTWGui&apos;&#x0D;&#x0A;- Update references to refactored element&#x0D;&#x0A;- Rename similarly named elements&#x0D;&#x0A;- Update fully qualified names in &apos;*&apos; files&#x0D;&#x0A;- Update textual occurrences in comments and strings" description="Rename type &apos;ZeusGui&apos;" flags="589830" id="org.eclipse.jdt.ui.rename.type" input="/src&lt;edu.sru.thangiah.zeus.vrptwgui{ZeusGui.java[ZeusGui" matchStrategy="1" name="ZeusVRPTWGui" patterns="*" qualified="true" references="true" similarDeclarations="true" stamp="1448674812583" textual="true" version="1.0"/>
+</session>

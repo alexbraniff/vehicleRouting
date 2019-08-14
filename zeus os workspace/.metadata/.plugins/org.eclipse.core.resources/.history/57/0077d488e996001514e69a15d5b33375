@@ -1,0 +1,63 @@
+package edu.sru.thangiah.zeus.neo4j;
+
+import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.factory.*;
+
+public class Database {
+
+	private GraphDatabaseFactory graphDbFactory;
+	private GraphDatabaseService graphDb;
+	private Node firstNode;
+	private Node secondNode;
+	private Relationship relationship;
+	
+	private String DB_PATH;
+	
+	public Database()
+	{
+		DB_PATH = "neo4j/data";
+		graphDbFactory = new GraphDatabaseFactory();
+		graphDb = graphDbFactory.newEmbeddedDatabase(DB_PATH);
+		registerShutdownHook( graphDb );
+		
+		firstNode = graphDb.createNode();
+		firstNode.setProperty( "message", "Hello, " );
+		secondNode = graphDb.createNode();
+		secondNode.setProperty( "message", "World!" );
+
+		relationship = firstNode.createRelationshipTo( secondNode, RelTypes.KNOWS );
+		relationship.setProperty( "message", "brave Neo4j " );
+		
+		System.out.print( firstNode.getProperty( "message" ) );
+		System.out.print( relationship.getProperty( "message" ) );
+		System.out.print( secondNode.getProperty( "message" ) );
+		
+		try ( Transaction tx = graphDb.beginTx() )
+		{
+		    // Database operations go here
+		    tx.success();
+		}
+		
+		graphDb.shutdown();
+	}
+	
+	private static enum RelTypes implements RelationshipType
+	{
+	    KNOWS
+	}
+	
+	private static void registerShutdownHook( final GraphDatabaseService graphDb )
+	{
+	    // Registers a shutdown hook for the Neo4j instance so that it
+	    // shuts down nicely when the VM exits (even if you "Ctrl-C" the
+	    // running application).
+	    Runtime.getRuntime().addShutdownHook( new Thread()
+	    {
+	        @Override
+	        public void run()
+	        {
+	            graphDb.shutdown();
+	        }
+	    } );
+	}
+}

@@ -1,0 +1,9 @@
+package edu.sru.thangiah.zeus.neo4j;
+
+public class Database {
+
+	private GraphDatabaseService graphDb;
+	private Node firstNode;
+	private Node secondNode;
+	private Relationship relationship;
+}

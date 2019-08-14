@@ -1,0 +1,5 @@
+zeus[[:space:]]os[[:space:]]workspace/Zeus/data/VRP/Results/mdvrp_p01.txt_short.txt filter=lfs diff=lfs merge=lfs -text
+zeus[[:space:]]os[[:space:]]workspace/Zeus/data/VRP/Results/mdvrp_p01.txt_students.txt filter=lfs diff=lfs merge=lfs -text
+zeus[[:space:]]os[[:space:]]workspace/Zeus/data/VRP/Results/vrp_p01.txt_long.txt filter=lfs diff=lfs merge=lfs -text
+zeus[[:space:]]os[[:space:]]workspace/Zeus/data/VRP/Results/vrp_p01.txt_students.txt filter=lfs diff=lfs merge=lfs -text
+zeus[[:space:]]os[[:space:]]workspace/Zeus/data/VRP/Results/mdvrp_p01.txt_long.txt filter=lfs diff=lfs merge=lfs -text
